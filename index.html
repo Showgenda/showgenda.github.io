@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#3442d9">
-<title>Dizi Ajanda</title>
+<title>Showgenda</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400..700&display=swap">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%233442d9'/%3E%3Crect x='8' y='9' width='16' height='15' rx='3' fill='none' stroke='%23fff' stroke-width='2.2'/%3E%3Cpath d='M12 6.5v4.5M20 6.5v4.5' stroke='%23fff' stroke-width='2.2' stroke-linecap='round'/%3E%3Cpath d='M14.2 13.6v6.2l5.2-3.1z' fill='%23ff6b4a'/%3E%3C/svg%3E">
 <style>
 :root {
-  /* Dizi Ajanda — kişisel dizi ajandası: serin kâğıt zemin, ultramarin mürekkep, mercan fosforlu kalem.
+  /* Showgenda — kişisel dizi ajandası: serin kâğıt zemin, ultramarin mürekkep, mercan fosforlu kalem.
      Başlık: Bricolage Grotesque · metin: Instrument Sans · saat ve bölüm kodları: DM Mono.
      Yerleşim: mobilde yüzen alt menü, 760px üstünde üst menü; içerik 1120px'lik tek kolon. */
   --bg: #f4f4f8;
@@ -708,7 +708,7 @@ body.gated main { padding-bottom: 0; }
 <body>
 <header class="topbar">
   <div class="wrap topbar-in">
-    <a class="brand" href="#diziler" aria-label="Dizi Ajanda, izleme listesine git"><span class="brand-mark" id="brandMark"></span><span>Dizi <b>Ajanda</b></span></a>
+    <a class="brand" href="#diziler" aria-label="Showgenda, izleme listesine git"><span class="brand-mark" id="brandMark"></span><span>Show<b>genda</b></span></a>
     <nav class="mainnav" aria-label="Ana menü">
       <a href="#diziler" data-nav="diziler">Diziler</a>
       <a href="#kesfet" data-nav="kesfet">Keşfet</a>
@@ -718,7 +718,7 @@ body.gated main { padding-bottom: 0; }
     <div class="top-acct" id="topAcct"><a class="gear" id="gearLink" href="#ayarlar" aria-label="Ayarlar"><span data-icon="gear"></span></a></div>
   </div>
 </header>
-<main id="view" tabindex="-1"><noscript><div class="wrap"><div class="empty" style="margin-top:24px"><p class="empty-title">Dizi Ajanda'nın çalışması için tarayıcıda JavaScript açık olmalı.</p></div></div></noscript></main>
+<main id="view" tabindex="-1"><noscript><div class="wrap"><div class="empty" style="margin-top:24px"><p class="empty-title">Showgenda'nın çalışması için tarayıcıda JavaScript açık olmalı.</p></div></div></noscript></main>
 <nav class="tabbar" aria-label="Alt menü">
   <a href="#diziler" data-nav="diziler"><span data-icon="tv"></span><span>Diziler</span></a>
   <a href="#kesfet" data-nav="kesfet"><span data-icon="search"></span><span>Keşfet</span></a>
@@ -1842,7 +1842,7 @@ function parseBackup(text) {
   try { o = JSON.parse(String(text || '').trim()); }
   catch (e) { throw new Error('Bu metin okunamadı. Yedeğin tamamını kopyaladığından emin ol.'); }
   if (!o || typeof o !== 'object' || !o.shows || typeof o.shows !== 'object' || !o.watched || typeof o.watched !== 'object') {
-    throw new Error('Bu bir Dizi Ajanda yedeği gibi görünmüyor.');
+    throw new Error('Bu bir Showgenda yedeği gibi görünmüyor.');
   }
   const clean = blank();
   clean.profile.name = String((o.profile && o.profile.name) || '').slice(0, 40);
@@ -1897,7 +1897,7 @@ function exportFile() {
   const blob = new Blob([JSON.stringify(D)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `dizi-ajanda-yedek-${isoDay()}.json`;
+  a.download = `showgenda-yedek-${isoDay()}.json`;
   document.body.append(a);
   a.click();
   a.remove();
@@ -2145,7 +2145,7 @@ async function scoresFor(s) {
 }
 
 /* ================= Supabase: arkadaşlarla ortak alan ================= */
-const SQL_SETUP = `-- Dizi Ajanda · ortak yorumlar ve puanlar
+const SQL_SETUP = `-- Showgenda · ortak yorumlar ve puanlar
 -- Supabase > SQL Editor > New query içine yapıştırıp Run'a bas.
 
 create table if not exists public.comments (
@@ -2395,7 +2395,7 @@ function inviteCode(withKeys) {
 }
 function parseInvite(code) {
   const c = String(code || '').replace(/\s+/g, '');
-  if (!c.startsWith('DA1:')) throw new Error('Bu bir Dizi Ajanda davet kodu değil. Kod “DA1:” ile başlamalı.');
+  if (!c.startsWith('DA1:')) throw new Error('Bu bir Showgenda davet kodu değil. Kod “DA1:” ile başlamalı.');
   let o;
   try { o = JSON.parse(decodeURIComponent(escape(atob(c.slice(4))))); }
   catch (e) { throw new Error('Davet kodu okunamadı; eksik kopyalanmış olabilir.'); }
@@ -3476,7 +3476,7 @@ function subsTeaser() {
 }
 
 /* ================= Hesap (Google) ve cihazlar arası eşitleme ================= */
-const SITE_URL = window.DIZI_SITE || 'https://enesmetesi.github.io/dizi-ajanda/';
+const SITE_URL = window.DIZI_SITE || 'https://showgenda.github.io/';
 const SYNC_KEY = 'dizi-ajanda:sync';
 let syncMeta = {};
 try { syncMeta = JSON.parse(localStorage.getItem(SYNC_KEY) || '{}') || {}; } catch (e) { syncMeta = {}; }
@@ -3710,8 +3710,8 @@ async function setHidden(showId, cid, hide) {
 
 /* ================= Giriş ekranı, hesap menüsü ve gizlilik ================= */
 // Marka tek yerde: ad değişirse burası ve sayfa başlığı yeterli
-const BRAND = { name: 'Dizi Ajanda', a: 'Dizi', b: 'Ajanda' };
-const brandHtml = () => `${esc(BRAND.a)} <b>${esc(BRAND.b)}</b>`;
+const BRAND = { name: 'Showgenda', a: 'Show', b: 'genda' };
+const brandHtml = () => `${esc(BRAND.a)}<b>${esc(BRAND.b)}</b>`;
 const GUEST_KEY = 'dizi-ajanda:guest';
 const AUTH_KEY = 'dizi-ajanda:auth';
 const NEXT_KEY = 'dizi-ajanda:next';
@@ -3981,7 +3981,7 @@ function viewSettings() {
       <details class="howto"${S.tmdbKey ? '' : ' open'}><summary>Anahtarı nasıl alırım?</summary><ol>
         <li><a href="https://www.themoviedb.org/signup" target="_blank" rel="noopener">themoviedb.org</a>'da ücretsiz hesap aç ve e-postanı doğrula.</li>
         <li>Profil simgesi → <b>Settings</b> → soldaki menüden <b>API</b> sayfasına gir.</li>
-        <li>Anahtar isteği formunu kişisel kullanım olarak doldur (uygulama adı: Dizi Ajanda; adres alanına herhangi bir site yazabilirsin).</li>
+        <li>Anahtar isteği formunu kişisel kullanım olarak doldur (uygulama adı: Showgenda; adres alanına herhangi bir site yazabilirsin).</li>
         <li>Çıkan <b>API Key</b> değerini ya da <b>API Read Access Token</b> değerini kopyalayıp yukarıya yapıştır.</li>
       </ol></details>
     </section>
@@ -4023,7 +4023,7 @@ function viewSettings() {
 
     <section class="set-card">
       <h2>Arkadaşını davet et</h2>
-      <p>Davet kodu ortak alanın bağlantı bilgisini taşır. Arkadaşın kodu kendi Dizi Ajanda'sında buraya yapıştırınca aynı yorumları ve puanları görür. Kodu yalnızca güvendiğin kişilerle paylaş.</p>
+      <p>Davet kodu ortak alanın bağlantı bilgisini taşır. Arkadaşın kodu kendi Showgenda'sında buraya yapıştırınca aynı yorumları ve puanları görür. Kodu yalnızca güvendiğin kişilerle paylaş.</p>
       <label class="check-row"><input type="checkbox" id="inviteKeys"${ui.inviteKeys ? ' checked' : ''}> TMDB ve MDBList anahtarlarımı da ekle</label>
       <div class="btnrow"><button type="button" class="btn btn-sm" data-act="copy-invite"${sb.ready() ? '' : ' disabled'}>${ICON.copy}<span>Davet kodunu kopyala</span></button></div>
       ${sb.ready() ? '' : '<p class="small muted">Önce ortak alanı bağla.</p>'}
