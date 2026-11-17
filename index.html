@@ -622,6 +622,83 @@ a.chip { display: inline-flex; align-items: center; color: inherit; text-decorat
 .cmt-acts { display: flex; flex-wrap: wrap; gap: 0 16px; }
 .cmt-acts .cmt-del + .cmt-del { margin-left: 0; }
 
+/* Giriş ekranı: afiş duvarı üstünde karşılama ve Google ile giriş */
+body.gated .topbar, body.gated .tabbar { display: none; }
+body.gated main { padding-bottom: 0; }
+.gate { position: relative; isolation: isolate; overflow: hidden; min-height: 100vh; min-height: 100dvh; display: grid; grid-template-rows: 1fr auto; }
+.gate::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--bg); opacity: .84; }
+.gate::after { content: ""; position: absolute; z-index: -1; width: 70vmax; height: 70vmax; left: -22vmax; top: -30vmax; border-radius: 50%; background: var(--brand); opacity: .16; filter: blur(90px); pointer-events: none; }
+.gate-wall { position: absolute; z-index: -2; inset: -20% -35%; display: grid; align-content: center; gap: 16px; transform: rotate(-9deg); pointer-events: none; }
+.gate-row { display: flex; gap: 16px; width: max-content; animation: gate-drift 170s linear infinite; }
+.gate-row:nth-child(2n) { animation-direction: reverse; animation-duration: 200s; }
+.gate-row > * { width: clamp(92px, 10.5vw, 150px); aspect-ratio: 2 / 3; border-radius: 14px; flex: none; background: var(--surface-2); object-fit: cover; }
+@keyframes gate-drift { to { transform: translateX(-50%); } }
+.gate-main { width: 100%; max-width: 1160px; margin: 0 auto; padding: calc(28px + env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 24px max(20px, env(safe-area-inset-left)); display: grid; gap: 24px; align-content: center; }
+.gate-brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font: 800 21px/1 var(--font-display); letter-spacing: -.025em; white-space: nowrap; }
+.gate-brand b { color: var(--brand); font-weight: 800; }
+.gate-hero h1 { margin: 26px 0 12px; font: 800 clamp(33px, 5.6vw, 60px)/1.02 var(--font-display); letter-spacing: -.035em; text-wrap: balance; }
+.gate-hero h1 em { font-style: normal; color: var(--brand); }
+.gate-lead { font-size: clamp(16px, 1.8vw, 19px); line-height: 1.5; color: var(--muted); max-width: 44ch; }
+.gate-feats { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.gate-feats li { display: grid; grid-template-columns: 40px 1fr; column-gap: 12px; align-items: start; }
+.gate-feats .gi { grid-row: span 2; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
+.gate-feats .gi svg { width: 20px; height: 20px; }
+.gate-feats b { font: 700 15.5px/1.3 var(--font-display); letter-spacing: -.01em; padding-top: 1px; }
+.gate-feats span:not(.gi) { font-size: 14px; line-height: 1.45; color: var(--muted); }
+.gate-card { padding: 26px 24px 22px; border-radius: 24px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(22, 23, 44, .06), 0 24px 60px rgba(22, 23, 44, .16); display: grid; gap: 14px; }
+.gate-card h2 { margin: 0; font: 800 28px/1.1 var(--font-display); letter-spacing: -.025em; }
+.gate-card > p { color: var(--muted); }
+.gbtn { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; min-height: 50px; margin-top: 4px; padding: 0 18px; border-radius: 999px; border: 1px solid #747775; background: #fff; color: #1f1f1f; font: 500 15.5px/1 Roboto, "Instrument Sans", system-ui, sans-serif; letter-spacing: .1px; transition: background-color .15s, box-shadow .15s; }
+.gbtn:hover:not(:disabled) { background: #f7f8f8; box-shadow: 0 1px 2px rgba(60, 64, 67, .3), 0 1px 3px 1px rgba(60, 64, 67, .15); }
+.gbtn img { width: 20px; height: 20px; flex: none; }
+.gbtn:disabled { cursor: default; opacity: .62; }
+.gbtn.busy { cursor: progress; opacity: 1; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .gbtn { background: #131314; border-color: #8e918f; color: #e3e3e3; } :root:not([data-theme="light"]) .gbtn:hover:not(:disabled) { background: #1d1e20; } }
+:root[data-theme="dark"] .gbtn { background: #131314; border-color: #8e918f; color: #e3e3e3; }
+.gate-msg { padding: 10px 12px; border-radius: 12px; background: var(--surface-2); font-size: 14px; line-height: 1.45; }
+.gate-msg.err { background: var(--err-bg); color: var(--err-ink); }
+.gate-msg a { color: inherit; font-weight: 600; }
+.gate-note { display: grid; grid-template-columns: 18px 1fr; gap: 8px; align-items: start; font-size: 14px; line-height: 1.45; color: var(--muted); }
+.gate-note svg { width: 18px; height: 18px; margin-top: 1px; color: var(--brand); }
+.gate-guest { justify-self: center; min-height: 36px; font-size: 14.5px; color: var(--brand); }
+.gate-guest svg { width: 16px; height: 16px; }
+.gate-guest-note { margin-top: -10px; text-align: center; }
+.gate-fine { padding-top: 14px; border-top: 1px solid var(--line); font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+.gate-fine a { color: var(--ink); font-weight: 600; text-underline-offset: 2px; }
+.gate-foot { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; padding: 14px max(20px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); font-size: 12.5px; color: var(--muted); text-align: center; }
+.gate-foot a { color: inherit; text-underline-offset: 2px; }
+@media (min-width: 560px) { .gate-feats { grid-template-columns: 1fr 1fr; gap: 18px 22px; } }
+@media (min-width: 920px) {
+  .gate-main { grid-template-columns: minmax(0, 1fr) 410px; grid-template-rows: auto auto; column-gap: 72px; row-gap: 34px; padding-top: calc(40px + env(safe-area-inset-top)); }
+  .gate-hero { grid-column: 1; grid-row: 1; align-self: end; }
+  .gate-feats { grid-column: 1; grid-row: 2; align-self: start; }
+  .gate-card { grid-column: 2; grid-row: 1 / span 2; align-self: center; padding: 32px 30px 24px; }
+}
+@media (max-width: 919px) { .gate-hero h1 { margin-top: 22px; } }
+@media (prefers-reduced-motion: reduce) { .gate-row { animation: none; } }
+
+/* Üst çubukta hesap menüsü */
+.top-acct { position: relative; display: flex; align-items: center; gap: 8px; flex: none; }
+.acct-btn { position: relative; width: 38px; height: 38px; padding: 0; border-radius: 50%; border: 1.5px solid var(--line-strong); background: var(--surface); overflow: hidden; display: grid; place-items: center; flex: none; }
+.acct-btn .acct-ini { width: 100%; height: 100%; display: grid; place-items: center; background: hsl(var(--h) 58% 82%); color: #16172c; font: 800 13px/1 var(--font-display); }
+.acct-btn img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.acct-btn:hover { border-color: var(--ink); }
+.acct-btn[aria-expanded="true"] { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+.acct-pop { position: absolute; right: 0; top: calc(100% + 10px); z-index: 45; width: max-content; min-width: 236px; max-width: min(320px, calc(100vw - 24px)); padding: 6px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 18px 44px rgba(22, 23, 44, .2); display: grid; }
+.acct-pop[hidden] { display: none; }
+.acct-pop-head { display: grid; gap: 2px; padding: 10px 12px 12px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
+.acct-pop-head b { font-weight: 700; overflow-wrap: anywhere; }
+.acct-pop-head span { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.acct-pop a, .acct-pop button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 42px; padding: 0 12px; border: 0; border-radius: 10px; background: none; color: var(--ink); text-decoration: none; text-align: left; font-weight: 600; font-size: 15px; }
+.acct-pop a:hover, .acct-pop button:hover, .acct-pop a:focus-visible, .acct-pop button:focus-visible { background: var(--surface-2); outline: none; }
+.acct-pop svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
+.top-login { min-height: 34px; }
+
+/* Gizlilik */
+.priv-top { padding-top: calc(18px + env(safe-area-inset-top)); }
+.priv .set-card p + p { margin-top: -4px; }
+.priv-lead { color: var(--muted); max-width: 64ch; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation-duration: .01ms !important; }
   .spinner, .spin-sm { animation-duration: 1.6s !important; }
@@ -638,7 +715,7 @@ a.chip { display: inline-flex; align-items: center; color: inherit; text-decorat
       <a href="#profil" data-nav="profil">Profil</a>
     </nav>
     <button class="sync" id="sync" type="button" data-act="sync" aria-live="polite"></button>
-    <a class="gear" id="gearLink" href="#ayarlar" aria-label="Ayarlar"><span data-icon="gear"></span></a>
+    <div class="top-acct" id="topAcct"><a class="gear" id="gearLink" href="#ayarlar" aria-label="Ayarlar"><span data-icon="gear"></span></a></div>
   </div>
 </header>
 <main id="view" tabindex="-1"><noscript><div class="wrap"><div class="empty" style="margin-top:24px"><p class="empty-title">Dizi Ajanda'nın çalışması için tarayıcıda JavaScript açık olmalı.</p></div></div></noscript></main>
@@ -1579,7 +1656,7 @@ function viewProfile() {
       ${connectionsSection()}
       <section class="sec"><div class="sec-head"><h2>Verilerin</h2></div>
         <div class="databox">
-          <p>${SERVER && sb.loggedIn() ? 'Takip bilgilerin bu tarayıcıda ve hesabında saklanır; diğer cihazlarında giriş yapman yeterli. İstersen ayrıca yedek al;' : 'Takip bilgilerin yalnızca bu tarayıcıda saklanır. Başka bir cihaza taşımak ya da güvenceye almak için yedek al;'} diğer cihazda “Dosyadan yükle” ya da “Yapıştırarak yükle” ile geri getir. Yedek dosyası API anahtarlarını da içerir; kimseyle paylaşma.</p>
+          <p>${SERVER && sb.loggedIn() ? 'Takip bilgilerin bu tarayıcıda ve hesabında saklanır; diğer cihazlarında giriş yapman yeterli. İstersen ayrıca yedek al;' : 'Takip bilgilerin yalnızca bu tarayıcıda saklanır. Başka bir cihaza taşımak ya da güvenceye almak için yedek al;'} diğer cihazda “Dosyadan yükle” ya da “Yapıştırarak yükle” ile geri getir.${SERVER ? '' : ' Yedek dosyası API anahtarlarını da içerir; kimseyle paylaşma.'}</p>
           <div class="btnrow">
             <button type="button" class="btn btn-sm" data-act="export">${ICON.download}<span>Yedeği indir</span></button>
             <button type="button" class="btn btn-sm" data-act="copy">${ICON.copy}<span>Yedeği kopyala</span></button>
@@ -1854,7 +1931,7 @@ async function importPaste() {
 }
 async function wipe() {
   const online = SERVER && sb.loggedIn();
-  const ok = await dialog({ title: 'Tüm veriler silinsin mi?', text: online ? 'Takip ettiğin diziler, izleme geçmişin, favorilerin ve puanların bu tarayıcıdan ve hesabından silinir; hesaptan da çıkış yapılır. Yorumların silinmez. İstersen önce yedek al.' : 'Takip ettiğin diziler, izleme geçmişin, favorilerin, puanların ve kayıtlı anahtarların bu tarayıcıdan silinir. Ortak alandaki yorumların silinmez. İstersen önce yedek al.', ok: 'Hepsini sil', danger: true });
+  const ok = await dialog({ title: 'Tüm veriler silinsin mi?', text: online ? 'Takip ettiğin diziler, izleme geçmişin, favorilerin ve puanların bu tarayıcıdan ve hesabından silinir. Hesabın açık kalır; yorumların silinmez. İstersen önce yedek al.' : 'Takip ettiğin diziler, izleme geçmişin, favorilerin, puanların ve kayıtlı anahtarların bu tarayıcıdan silinir. Ortak alandaki yorumların silinmez. İstersen önce yedek al.', ok: 'Hepsini sil', danger: true });
   if (!ok) return;
   if (online) {
     clearTimeout(syncTimer);
@@ -1863,7 +1940,9 @@ async function wipe() {
   }
   D = blank();
   ui.open = {};
-  sb.reset(); resetExternal();
+  if (online && sb.session && sb.session.name) D.profile.name = sb.session.name.slice(0, 40);
+  if (!SERVER) sb.reset();
+  resetExternal();
   save(true); update(true);
   toast({ text: 'Tüm veriler silindi.' });
 }
@@ -1926,7 +2005,7 @@ async function copyText(text, okMsg, title = 'Kopyala') {
 }
 
 /* ================= TMDB: trend ve izleme platformları ================= */
-async function tmdb(path, params = {}, key = (D.settings.tmdbKey || '').trim()) {
+async function tmdb(path, params = {}, key = SERVER ? '' : (D.settings.tmdbKey || '').trim()) {
   if (!key && !SERVER) throw apiErr('no_key');
   const u = new URL(key ? TMDB_API + path : API_FN + '/tmdb' + path);
   for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
@@ -2000,6 +2079,7 @@ async function loadTrend(win) {
     ui.trend[win] = { error: e };
   }
   if (route.view === 'discover') renderDiscoverResults();
+  else onTrendLoaded();
 }
 async function tvmLookup(kind, id) {
   try { return await net.get(`/lookup/shows?${kind}=${encodeURIComponent(id)}`, { priority: true }); }
@@ -2039,7 +2119,7 @@ async function openTmdb(tmdbId, el) {
 
 /* ================= MDBList: IMDb, Rotten Tomatoes, Metacritic ================= */
 async function scoresFor(s) {
-  const key = (D.settings.mdblistKey || '').trim();
+  const key = SERVER ? '' : (D.settings.mdblistKey || '').trim();
   if (!key && !SERVER) throw apiErr('no_key');
   if (!s.imdb) return { noid: true };
   const hit = cacheGet('mdb', s.imdb, 3 * DAY);
@@ -2169,7 +2249,7 @@ const sb = {
       if (!force && this.session && this.session.access_token && this.session.expires_at - 60 > now) return this.session;
       if (this.session && this.session.refresh_token) {
         try { this.store(await this.authCall('/auth/v1/token?grant_type=refresh_token', { refresh_token: this.session.refresh_token })); return this.session; }
-        catch (e) { if (e.network) throw e; this.reset(); }
+        catch (e) { if (e.network) throw e; this.reset(); if (SERVER) sessionLost(); }
       }
       if (SERVER) throw apiErr('login', 'Giriş gerekli');
       this.store(await this.authCall('/auth/v1/signup', {}));
@@ -2468,7 +2548,7 @@ function rateBlock(s) {
   const others = rows.filter(r => r.user_id !== sb.uid());
   const scale = Array.from({ length: 10 }, (_, i) => i + 1).map(n => `<button type="button" role="radio" aria-checked="${n === mine}" class="rate-btn${n <= mine ? ' on' : ''}" data-act="rate" data-id="${s.id}" data-score="${n}" data-focus="rate-${n}" aria-label="${n} puan">${n}</button>`).join('');
   let social = '';
-  if (SERVER && !sb.loggedIn()) social = `<p class="rate-note">Arkadaşlarının puanlarını görmek ve puanını onlarla paylaşmak için ${canLogin() ? '<button type="button" class="link-btn small" data-act="login">Google ile giriş yap</button>' : 'yayındaki sitede giriş yap'}.</p>`;
+  if (SERVER && !sb.loggedIn()) social = `<p class="rate-note">Arkadaşlarının puanlarını görmek ve puanını onlarla paylaşmak için ${canLogin() ? '<a class="link-btn small" href="#giris">giriş yap</a>' : 'yayındaki sitede giriş yap'}.</p>`;
   else if (!sb.ready()) social = '<p class="rate-note">Arkadaşlarının puanlarını görmek için <a href="#ayarlar">ortak alanı bağla</a>.</p>';
   else if (st && st.error && !st.ratings) social = `<p class="rate-note">${esc(sbErrorText(st.error))}</p>`;
   else if (rows.length) {
@@ -3396,7 +3476,7 @@ function subsTeaser() {
 }
 
 /* ================= Hesap (Google) ve cihazlar arası eşitleme ================= */
-const SITE_URL = 'https://enesmetesi.github.io/dizi-ajanda/';
+const SITE_URL = window.DIZI_SITE || 'https://enesmetesi.github.io/dizi-ajanda/';
 const SYNC_KEY = 'dizi-ajanda:sync';
 let syncMeta = {};
 try { syncMeta = JSON.parse(localStorage.getItem(SYNC_KEY) || '{}') || {}; } catch (e) { syncMeta = {}; }
@@ -3504,12 +3584,18 @@ function syncNow(pull = false) {
 }
 // Google'dan dönüşte adres çubuğundaki oturum bilgisini al ve hemen adresten sil
 function takeOAuthReturn() {
-  const h = location.hash;
-  if (!/(^#|&)(access_token|error_description)=/.test(h)) return null;
-  const p = new URLSearchParams(h.slice(1));
-  history.replaceState(null, '', location.pathname + location.search + '#ayarlar');
-  navStack[0] = '#ayarlar';
-  if (p.get('error_description')) return { error: p.get('error_description').replace(/\+/g, ' ') };
+  const h = location.hash, q = location.search;
+  const inHash = /(^#|&)(access_token|error_description|error)=/.test(h);
+  const inQuery = /[?&](error_description|error)=/.test(q);
+  if (!inHash && !inQuery) return null;
+  const p = new URLSearchParams(inHash ? h.slice(1) : q.slice(1));
+  let next = '#diziler';
+  try { next = sessionStorage.getItem(NEXT_KEY) || next; sessionStorage.removeItem(NEXT_KEY); } catch (e) { /* yok say */ }
+  const err = p.get('error_description') || p.get('error');
+  if (err) next = '#giris';
+  history.replaceState(null, '', location.pathname + (inQuery ? '' : location.search) + next);
+  navStack[0] = next;
+  if (err) return { error: err.replace(/\+/g, ' ') };
   if (!SERVER || !p.get('access_token')) return null;
   sb.reset();
   sb.store({ access_token: p.get('access_token'), refresh_token: p.get('refresh_token'), expires_in: +p.get('expires_in') || 3600, expires_at: +p.get('expires_at') || 0 });
@@ -3517,6 +3603,9 @@ function takeOAuthReturn() {
 }
 async function afterLogin(fresh) {
   const s = sb.session;
+  if (syncMeta.uid && syncMeta.uid !== sb.uid()) { clearPersonal(); syncMeta = {}; saveSyncMeta(); }
+  lsSet(GUEST_KEY, null);
+  ui.gate = { busy: false, msg: '', err: false };
   if (s && s.name && !D.profile.name) { D.profile.name = s.name.slice(0, 40); save(true, true); }
   try { const a = await sb.rest(`admins?select=user_id&user_id=eq.${sb.uid()}`); sb.admin = Array.isArray(a) && a.length > 0; }
   catch (e) { sb.admin = false; }
@@ -3530,26 +3619,34 @@ async function afterLogin(fresh) {
   update(true);
 }
 async function logout() {
-  const ok = await dialog({ title: 'Çıkış yapılsın mı?', text: 'Bu cihazdaki takip listen olduğu gibi kalır; hesabındaki kopya da silinmez.', ok: 'Çıkış yap' });
+  setAcctMenu(false);
+  const ok = await dialog({ title: 'Çıkış yapılsın mı?', text: 'Listen hesabında saklı kalır. Bu tarayıcıdaki kopyası silinir; yeniden giriş yaptığında geri gelir.', ok: 'Çıkış yap' });
   if (!ok) return;
   clearTimeout(syncTimer);
-  await syncNow().catch(() => {});
+  let sent = true;
+  try { await syncNow(); } catch (e) { sent = false; }
+  if (!sent) {
+    const go = await dialog({ title: 'Son değişiklikler gönderilemedi', text: 'Bağlantı sorunu yüzünden bu tarayıcıdaki son değişiklikler hesabına kaydedilemedi. Şimdi çıkarsan bu değişiklikler kaybolur.', ok: 'Yine de çık', danger: true });
+    if (!go) return;
+  }
   sb.logout();
   sb.admin = false;
   syncMeta = {};
   saveSyncMeta();
+  clearPersonal();
   ui.social = {};
-  update(true);
+  lsSet(GUEST_KEY, null);
+  mount();
   toast({ text: 'Çıkış yapıldı.' });
 }
 const loginBtn = () => (canLogin()
-  ? `<div class="btnrow"><button type="button" class="btn btn-primary btn-sm" data-act="login">${ICON.user}<span>Google ile giriş yap</span></button></div>`
+  ? `<div class="btnrow"><a class="btn btn-primary btn-sm" href="#giris">${ICON.user}<span>Giriş yap</span></a></div>`
   : `<p class="small muted">Giriş yalnızca yayındaki sitede çalışır: <a href="${SITE_URL}" target="_blank" rel="noopener">${SITE_URL.replace('https://', '')}</a></p>`);
 const loginCard = (title = 'Yorumlar giriş yapanlara açık.') => `<div class="empty"><p class="empty-title">${esc(title)}</p><p>Google hesabınla giriş yapınca arkadaşlarının yorumlarını okuyup yorum yazabilirsin; takip listen de bütün cihazlarında aynı olur.</p>${loginBtn()}</div>`;
 function accountCard() {
   if (!sb.loggedIn()) {
     return `<section class="set-card"><div class="set-head"><h2>Hesap</h2><span class="pill pill-end">Giriş yapılmadı</span></div>
-      <p>Google hesabınla giriş yapınca takip listen, izlediğin bölümler, puanların ve ayarların bütün cihazlarında aynı olur; arkadaşlarının yorumlarını okuyup yorum yazabilirsin. Giriş yapmadan da kullanabilirsin; o zaman veriler yalnızca bu cihazda kalır.</p>
+      <p>Giriş yapınca takip listen, izlediğin bölümler, puanların ve ayarların bütün cihazlarında aynı olur; arkadaşlarının yorumlarını okuyup yorum yazabilirsin. Şu an verilerin yalnızca bu tarayıcıda.</p>
       ${loginBtn()}</section>`;
   }
   const s = sb.session;
@@ -3575,7 +3672,7 @@ function viewSettingsServer() {
     <section class="set-card"><h2>Ülke ve görünen ad</h2>${basicsForm(D.settings)}</section>
     <section class="set-card"><h2>Veri kaynakları</h2>
       <p>Bölüm takvimi TVmaze'den; trend, öneriler, oyuncular ve platformlar TMDB'den; puanlar MDBList'ten gelir. Bu bağlantılar sitenin sunucusu üzerinden çalışır, anahtar girmen gerekmez.</p></section>
-    <footer class="foot">Bu ürün TMDB API'sini kullanır ancak TMDB tarafından onaylanmamıştır. Giriş yapmazsan takip bilgilerin yalnızca bu tarayıcıda saklanır; giriş yaparsan hesabına da kaydedilir.</footer>
+    <footer class="foot">Bu ürün TMDB API'sini kullanır ancak TMDB tarafından onaylanmamıştır. Takip bilgilerin bu tarayıcıda ve hesabında saklanır. <a href="#gizlilik">Gizlilik</a></footer>
   </div>`;
 }
 /* ================= Yorum bildirme ve moderasyon ================= */
@@ -3610,6 +3707,247 @@ async function setHidden(showId, cid, hide) {
     toast({ kind: 'error', text: sbErrorText(e) });
   }
 }
+
+/* ================= Giriş ekranı, hesap menüsü ve gizlilik ================= */
+// Marka tek yerde: ad değişirse burası ve sayfa başlığı yeterli
+const BRAND = { name: 'Dizi Ajanda', a: 'Dizi', b: 'Ajanda' };
+const brandHtml = () => `${esc(BRAND.a)} <b>${esc(BRAND.b)}</b>`;
+const GUEST_KEY = 'dizi-ajanda:guest';
+const AUTH_KEY = 'dizi-ajanda:auth';
+const NEXT_KEY = 'dizi-ajanda:next';
+const G_LOGO = 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg';
+Object.assign(ICON, {
+  play: svg('<circle cx="12" cy="12" r="9"/><path d="M10.2 8.6v6.8l5.6-3.4z" fill="currentColor" stroke="none"/>'),
+  devices: svg('<rect x="2.5" y="5" width="13" height="10" rx="1.6"/><path d="M6 19h6M9 15v4"/><rect x="17.5" y="8" width="4" height="11" rx="1.2"/>'),
+  logout: svg('<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"/>'),
+  shield: svg('<path d="M12 3 5 6v5.5c0 4.4 3 8 7 9.5 4-1.5 7-5.1 7-9.5V6z"/>'),
+});
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* yok say */ } };
+
+// Google ile giriş açık mı? Son bilinen durum 7 gün saklanır, her açılışta arka planda yeniden sorulur
+ui.auth = (() => {
+  try {
+    const c = JSON.parse(lsGet(AUTH_KEY) || 'null');
+    if (c && Date.now() - c.at < 7 * DAY) return { state: c.google ? 'on' : 'off' };
+  } catch (e) { /* yok say */ }
+  return { state: 'unknown' };
+})();
+ui.gate = { busy: false, msg: '', err: false };
+let acctOpen = false;
+
+const siteUrl = (() => { try { return new URL(SITE_URL); } catch (e) { return null; } })();
+const onSite = () => !!siteUrl && location.origin === siteUrl.origin && location.pathname.startsWith(siteUrl.pathname);
+// Misafir kullanım yalnızca giriş yapılamadığında açılır: yerel kopya, önizleme, Google kapalı ya da sunucuya ulaşılamıyor
+const guestAllowed = () => !canLogin() || !onSite() || ui.auth.state === 'off' || ui.auth.state === 'error';
+const guestChosen = () => lsGet(GUEST_KEY) === '1';
+const gateActive = () => !!SERVER && !sb.loggedIn() && !(guestAllowed() && guestChosen());
+function viewName() {
+  if (route.view === 'privacy') return 'privacy';
+  if (route.view === 'gate') return SERVER && !sb.loggedIn() ? 'gate' : 'watchlist';
+  return gateActive() ? 'gate' : route.view;
+}
+const chromeHidden = v => v === 'gate' || (v === 'privacy' && gateActive());
+
+async function checkAuth() {
+  if (!SERVER || !canLogin()) return;
+  try {
+    const res = await fetchT(SERVER.url + '/auth/v1/settings', { headers: { apikey: SERVER.key } }, 8000);
+    if (!res.ok) throw apiErr('http', 'HTTP ' + res.status);
+    const j = await res.json();
+    setAuthState(j && j.external && j.external.google ? 'on' : 'off');
+  } catch (e) {
+    if (ui.auth.state === 'unknown') setAuthState('error');
+  }
+}
+function setAuthState(st) {
+  if (ui.auth.state === st) return;
+  const before = viewName();
+  ui.auth.state = st;
+  if (st === 'on' || st === 'off') lsSet(AUTH_KEY, JSON.stringify({ google: st === 'on', at: Date.now() }));
+  if (viewName() !== before) mount();
+  else if (before === 'gate') patchGate();
+}
+function authErrorText(m) {
+  const t = String(m || '');
+  if (/provider is not enabled|unsupported provider/i.test(t)) return 'Google ile giriş henüz açılmadı. Kurulum tamamlanınca buradan giriş yapabileceksin.';
+  if (/access[_ ]denied|denied|cancel/i.test(t)) return 'Google girişi tamamlanmadı. İstersen yeniden dene.';
+  if (/signups? not allowed|signup.*disabled/i.test(t)) return 'Yeni üyelik şu an kapalı.';
+  return 'Giriş tamamlanamadı: ' + t;
+}
+function gateMsg(text, err = false) {
+  ui.gate.msg = text; ui.gate.err = err; ui.gate.busy = false;
+  if (viewName() === 'gate') patchGate();
+  else toast({ kind: err ? 'error' : 'info', text, timeout: 8000 });
+}
+function startLogin() {
+  if (!SERVER) return;
+  if (!canLogin()) { gateMsg('Giriş yalnızca yayındaki sitede çalışır.'); return; }
+  if (ui.auth.state === 'off') { gateMsg('Google ile giriş henüz açılmadı. Kurulum tamamlanınca buradan giriş yapabileceksin.'); return; }
+  const h = location.hash;
+  const next = !h || /^#(giris|gizlilik)$/.test(h) ? '#diziler' : h;
+  try { sessionStorage.setItem(NEXT_KEY, next); } catch (e) { /* yok say */ }
+  ui.gate.busy = true; ui.gate.msg = '';
+  patchGate();
+  save(true, true);
+  sb.login();
+}
+function sessionLost() {
+  if (!SERVER) return;
+  ui.gate.msg = 'Oturumunun süresi doldu. Devam etmek için yeniden giriş yap.';
+  ui.gate.err = false;
+  setTimeout(() => mount(), 0);
+}
+function clearPersonal() {
+  const country = D.settings.country;
+  D = blank();
+  D.settings.country = country;
+  ui.open = {};
+  save(true, true);
+}
+function purgeLegacyKeys() {
+  if (!SERVER) return;
+  const S = D.settings;
+  if (S.tmdbKey || S.mdblistKey || S.sbUrl || S.sbKey) {
+    S.tmdbKey = ''; S.mdblistKey = ''; S.sbUrl = ''; S.sbKey = '';
+    save(true, true);
+  }
+}
+
+function gateWall() {
+  const t = (ui.trend.week && ui.trend.week.items) || cacheGet('trend', 'week', 7 * DAY) || [];
+  let imgs = t.map(x => x.img).filter(Boolean).map(u => u.replace('/w342/', '/w185/'));
+  if (imgs.length < 8) imgs = imgs.concat(Object.values(D.shows).map(s => s.img).filter(Boolean));
+  const rows = 4, per = 9;
+  let html = '';
+  for (let r = 0; r < rows; r++) {
+    const cells = [];
+    for (let i = 0; i < per; i++) {
+      const src = imgs.length ? imgs[(r * 5 + i * 2 + (r % 2)) % imgs.length] : '';
+      cells.push(src ? `<img src="${esc(src)}" alt="" decoding="async" onerror="this.style.visibility='hidden'">` : '<span></span>');
+    }
+    html += `<div class="gate-row">${cells.join('')}${cells.join('')}</div>`;
+  }
+  return html;
+}
+function onTrendLoaded() {
+  const w = $('#view .gate-wall');
+  if (w && !w.dataset.filled) { w.innerHTML = gateWall(); w.dataset.filled = '1'; }
+}
+function gateCard() {
+  const g = ui.gate, off = ui.auth.state === 'off';
+  const n = Object.keys(D.shows).length;
+  const btn = canLogin()
+    ? `<button type="button" class="gbtn${g.busy ? ' busy' : ''}" data-act="login"${g.busy || off ? ' disabled' : ''}>${g.busy ? '<span class="spin-sm" aria-hidden="true"></span>' : `<img src="${G_LOGO}" alt="" onerror="this.remove()">`}<span>${g.busy ? 'Google’a yönlendiriliyorsun…' : 'Google ile devam et'}</span></button>`
+    : `<p class="gate-msg">Giriş yalnızca yayındaki sitede çalışır: <a href="${esc(SITE_URL)}">${esc(SITE_URL.replace(/^https?:\/\//, ''))}</a></p>`;
+  const offNote = off && canLogin() && !g.msg ? '<p class="gate-msg" role="status">Google ile giriş henüz açılmadı. Kurulum tamamlanınca buradan giriş yapabileceksin.</p>' : '';
+  const msg = g.msg ? `<p class="gate-msg${g.err ? ' err' : ''}" role="${g.err ? 'alert' : 'status'}">${esc(g.msg)}</p>` : '';
+  const local = n && !off ? `<p class="gate-note">${ICON.devices}<span>Bu tarayıcıda ${nf.format(n)} dizilik bir listen var. Giriş yaptığında hesabına eklenir.</span></p>` : '';
+  const guest = guestAllowed()
+    ? `<button type="button" class="link-btn gate-guest" data-act="guest"><span>${guestChosen() ? 'Giriş yapmadan devam et' : 'Şimdilik giriş yapmadan devam et'}</span>${ICON.chev}</button>
+       <p class="small muted gate-guest-note">Giriş yapmazsan listen yalnızca bu tarayıcıda kalır; yorum ve puan paylaşamazsın.</p>`
+    : '';
+  return `<h2 id="gateTitle">${n ? 'Tekrar hoş geldin' : 'Hoş geldin'}</h2>
+    <p>Devam etmek için Google hesabınla giriş yap. İlk girişte hesabın kendiliğinden oluşur.</p>
+    ${btn}${offNote}${msg}${local}${guest}
+    <p class="gate-fine">Giriş yaptığında Google'dan yalnızca adın, e-posta adresin ve profil fotoğrafın alınır. Ayrıntılar için <a href="#gizlilik">Gizlilik</a>.</p>`;
+}
+function patchGate() {
+  const c = $('#view .gate-card');
+  if (!c) return;
+  const html = gateCard();
+  if (c.dataset.sig === String(html.length) && c._html === html) return;
+  c._html = html; c.dataset.sig = String(html.length);
+  const hadFocus = c.contains(document.activeElement) ? document.activeElement.dataset.act : null;
+  c.innerHTML = html;
+  if (hadFocus) { const el = $(`[data-act="${hadFocus}"]`, c); if (el) el.focus({ preventScroll: true }); }
+}
+function viewGate() {
+  const trend = (ui.trend.week && ui.trend.week.items) || cacheGet('trend', 'week', 7 * DAY);
+  return `<div class="gate">
+    <div class="gate-wall" aria-hidden="true"${trend ? ' data-filled="1"' : ' data-need-trend="week"'}>${gateWall()}</div>
+    <div class="gate-main">
+      <section class="gate-hero">
+        <span class="gate-brand"><span class="brand-mark">${ICON.logo}</span><span>${brandHtml()}</span></span>
+        <h1>İzlediğin her dizi, kaldığın her bölüm <em>tek yerde</em>.</h1>
+        <p class="gate-lead">Yeni bölümler çıkınca ajandana düşer. Nerede kaldığını hatırlar; arkadaşlarınla puanlayıp yorumlarsın.</p>
+      </section>
+      <section class="gate-card" aria-labelledby="gateTitle">${gateCard()}</section>
+      <ul class="gate-feats">
+        <li><span class="gi">${ICON.cal}</span><b>Bölüm takvimi</b><span>Takip ettiğin dizilerin yeni bölümleri gün gün önünde.</span></li>
+        <li><span class="gi">${ICON.play}</span><b>Kaldığın yer</b><span>Bölümü, hatta dakikayı not eder; yetişme planı çıkarır.</span></li>
+        <li><span class="gi">${ICON.chat}</span><b>Arkadaşlarınla</b><span>Puanlar ve yorumlar ortak, spoiler içeren yorumlar gizli.</span></li>
+        <li><span class="gi">${ICON.devices}</span><b>Her cihazda aynı liste</b><span>Telefonda işaretle, bilgisayarda kaldığın yerden devam et.</span></li>
+      </ul>
+    </div>
+    <footer class="gate-foot"><span>Dizi bilgileri TVmaze ve TMDB'den gelir. Bu ürün TMDB API'sini kullanır ancak TMDB tarafından onaylanmamıştır.</span><a href="#gizlilik">Gizlilik</a></footer>
+  </div>`;
+}
+function viewPrivacy() {
+  const gated = gateActive();
+  const back = gated
+    ? `<a class="link-btn" href="#giris">${ICON.back}<span>Giriş ekranına dön</span></a>`
+    : `<button type="button" class="link-btn" data-act="back">${ICON.back}<span>Geri</span></button>`;
+  return `<div class="wrap narrow priv">
+    ${gated ? `<div class="priv-top"><span class="gate-brand"><span class="brand-mark">${ICON.logo}</span><span>${brandHtml()}</span></span></div>` : ''}
+    <div class="backbar">${back}</div>
+    <h1 class="page-title">Gizlilik</h1>
+    <p class="priv-lead">${esc(BRAND.name)} bir dizi takip uygulamasıdır. Bu sayfa hangi bilgilerin neden tutulduğunu sade bir dille anlatır.</p>
+    <section class="set-card"><h2>Google ile giriş</h2><p>Giriş yaptığında Google adını, e-posta adresini ve profil fotoğrafını paylaşır. Uygulama bunların dışında Google hesabına erişmez, şifreni görmez.</p></section>
+    <section class="set-card"><h2>Hesabında saklananlar</h2><p>Takip ettiğin diziler, izlediğin bölümler, puanların, kaldığın dakikalar, abonelik notların ve ülke tercihin hesabında saklanır. Böylece her cihazında aynı listeyi görürsün. Her tarayıcı ayrıca kendi kopyasını cihazda tutar.</p><p>Yorumların ve dizilere verdiğin puanlar diğer üyelere görünen adınla gösterilir.</p></section>
+    <section class="set-card"><h2>Nerede saklanır?</h2><p>Hesap ve liste bilgileri Supabase altyapısında, Singapur bölgesindeki bir veritabanında tutulur.</p></section>
+    <section class="set-card"><h2>Dış kaynaklar</h2><p>Dizi ve bölüm bilgileri TVmaze'den; görseller, trendler ve platform bilgileri TMDB'den; puanlar MDBList'ten gelir. Yazı tipleri Google Fonts'tan yüklenir. Bu servislere hesap bilgilerin gönderilmez. Kötüye kullanımı önlemek için sunucu, istekleri IP adresine göre birkaç dakikalığına sayar.</p></section>
+    <section class="set-card"><h2>Silme</h2><p>Profil sayfasındaki “Tüm verileri sil” düğmesi takip listeni hem bu tarayıcıdan hem hesabından siler. Yorumlarını tek tek silebilirsin. Hesabının tamamen kapatılmasını istersen uygulamayı yöneten kişiye yaz.</p></section>
+    <p class="small muted" style="margin-top:18px">Son güncelleme: 17 Kasım 2026</p>
+    ${footer()}
+  </div>`;
+}
+
+function renderTopAcct() {
+  const box = $('#topAcct');
+  if (!box) return;
+  const on = !!SERVER && sb.loggedIn();
+  const sig = on ? ['in', sb.session.name, sb.session.email, sb.session.avatar].join('|') : ['out', !!SERVER, canLogin()].join('|');
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  if (on) {
+    const s = sb.session, who = s.name || s.email || 'Hesabın';
+    const img = s.avatar ? `<img src="${esc(s.avatar)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : '';
+    box.innerHTML = `<button type="button" class="acct-btn" id="acctBtn" data-act="acct-menu" aria-haspopup="menu" aria-expanded="${acctOpen}" aria-controls="acctPop" aria-label="Hesap menüsü: ${esc(who)}"><span class="acct-ini" style="--h:${hue(who)}" aria-hidden="true">${esc(initials(who))}</span>${img}</button>
+      <div class="acct-pop" id="acctPop" role="menu" aria-label="Hesap"${acctOpen ? '' : ' hidden'}>
+        <div class="acct-pop-head" role="presentation"><b>${esc(who)}</b>${s.email && s.email !== who ? `<span>${esc(s.email)}</span>` : ''}</div>
+        <a role="menuitem" href="#profil">${ICON.user}<span>Profil</span></a>
+        <a role="menuitem" href="#ayarlar">${ICON.gear}<span>Ayarlar</span></a>
+        <a role="menuitem" href="#gizlilik">${ICON.shield}<span>Gizlilik</span></a>
+        <button type="button" role="menuitem" data-act="logout">${ICON.logout}<span>Çıkış yap</span></button>
+      </div>`;
+  } else {
+    box.innerHTML = `${SERVER && canLogin() ? '<a class="btn btn-primary btn-sm top-login" href="#giris">Giriş yap</a>' : ''}<a class="gear" id="gearLink" href="#ayarlar" aria-label="Ayarlar">${ICON.gear}</a>`;
+    acctOpen = false;
+  }
+}
+function setAcctMenu(open, focusBtn = false) {
+  acctOpen = open;
+  const pop = $('#acctPop'), btn = $('#acctBtn');
+  if (!pop || !btn) return;
+  pop.hidden = !open;
+  btn.setAttribute('aria-expanded', String(open));
+  if (open) { const f = $('[role="menuitem"]', pop); if (f) f.focus(); }
+  else if (focusBtn) btn.focus();
+}
+document.addEventListener('click', ev => {
+  if (!acctOpen) return;
+  if (!ev.target.closest('#topAcct') || ev.target.closest('#acctPop a')) setAcctMenu(false);
+}, true);
+document.addEventListener('keydown', ev => {
+  if (!acctOpen) return;
+  const items = $$('#acctPop [role="menuitem"]');
+  const i = items.indexOf(document.activeElement);
+  if (ev.key === 'Escape') { ev.preventDefault(); setAcctMenu(false, true); }
+  else if (ev.key === 'ArrowDown') { ev.preventDefault(); (items[i + 1] || items[0]).focus(); }
+  else if (ev.key === 'ArrowUp') { ev.preventDefault(); (items[i - 1] || items[items.length - 1]).focus(); }
+  else if (ev.key === 'Tab') setAcctMenu(false);
+});
 
 /* ================= Ayarlar ve bölüm sayfası ================= */
 function viewSettings() {
@@ -3762,8 +4100,8 @@ function connectionsSection() {
 }
 
 /* ================= Yönlendirme ve çizim ================= */
-const VIEWS = { watchlist: viewWatchlist, upcoming: viewUpcoming, discover: viewDiscover, profile: viewProfile, show: viewShow, episode: viewEpisode, settings: viewSettings, person: viewPerson, subs: viewSubs };
-const TITLES = { watchlist: 'İzleme listesi', upcoming: 'Yaklaşanlar', discover: 'Keşfet', profile: 'Profil', settings: 'Ayarlar', person: 'Kişi', subs: 'Abonelik planı' };
+const VIEWS = { gate: viewGate, privacy: viewPrivacy, watchlist: viewWatchlist, upcoming: viewUpcoming, discover: viewDiscover, profile: viewProfile, show: viewShow, episode: viewEpisode, settings: viewSettings, person: viewPerson, subs: viewSubs };
+const TITLES = { gate: 'Giriş', privacy: 'Gizlilik', watchlist: 'İzleme listesi', upcoming: 'Yaklaşanlar', discover: 'Keşfet', profile: 'Profil', settings: 'Ayarlar', person: 'Kişi', subs: 'Abonelik planı' };
 
 function parseRoute() {
   let h = location.hash.replace(/^#/, '');
@@ -3779,6 +4117,8 @@ function parseRoute() {
   if (h === 'profil') return { view: 'profile' };
   if (h === 'ayarlar') return { view: 'settings' };
   if (h === 'abonelik') return { view: 'subs' };
+  if (h === 'giris') return { view: 'gate' };
+  if (h === 'gizlilik') return { view: 'privacy' };
   return { view: 'watchlist' };
 }
 const routeKey = r => r.view + (r.src || '') + (r.id ? '-' + r.id : '') + (r.ep ? '-' + r.ep : '');
@@ -3792,18 +4132,22 @@ function setNav() {
     else a.removeAttribute('aria-current');
   }
 }
-function setTitle() {
-  let t = TITLES[route.view] || 'Diziler';
-  const s = route.view === 'show' || route.view === 'episode' ? getShow(route.id) : null;
-  if (s && route.view === 'show') t = showTitle(s);
-  if (s && route.view === 'episode') {
+function setTitle(v = viewName()) {
+  let t = TITLES[v] || 'Diziler';
+  const s = v === 'show' || v === 'episode' ? getShow(route.id) : null;
+  if (s && v === 'show') t = showTitle(s);
+  if (s && v === 'episode') {
     const e = (s.eps || []).find(x => x[E_ID] === route.ep);
     t = e ? `${showTitle(s)} ${epLabel(s, e)}` : showTitle(s);
   }
-  if (route.view === 'person') { const p = ui.person[route.src + route.id]; if (p && p.data && p.data.name) t = p.data.name; }
-  document.title = `${t} · Dizi Ajanda`;
+  if (v === 'person') { const p = ui.person[route.src + route.id]; if (p && p.data && p.data.name) t = p.data.name; }
+  document.title = `${t} · ${BRAND.name}`;
 }
-function hydrate() {
+function hydrate(v = viewName()) {
+  if (v === 'gate' || v === 'privacy') {
+    for (const el of $$('[data-need-trend]')) { const w = el.dataset.needTrend; if (!ui.trend[w]) loadTrend(w); }
+    return;
+  }
   for (const el of $$('[data-need-sched]')) { const r = el.dataset.needSched; if (!ui.sched[r]) loadSched(r); }
   for (const el of $$('[data-need-trend]')) { const w = el.dataset.needTrend; if (!ui.trend[w]) loadTrend(w); }
   if ($('[data-need-foryou]')) loadForYou();
@@ -3812,16 +4156,28 @@ function hydrate() {
   if (route.view === 'show') { ensureShow(route.id); ensureExtras(route.id); }
   if (route.view === 'episode') { ensureShow(route.id); ensureEpisode(route.ep); ensureSocial(route.id); ensureEpExtra(route.id, route.ep); }
 }
+function applyChrome(v) {
+  document.body.classList.toggle('gated', chromeHidden(v));
+  if (!acctOpen) renderTopAcct();
+}
 function mount() {
+  if (route.view === 'gate' && SERVER && sb.loggedIn()) { history.replaceState(null, '', '#diziler'); route = parseRoute(); }
+  const v = viewName();
+  if (acctOpen) setAcctMenu(false);
+  applyChrome(v);
   setNav();
-  $('#view').innerHTML = VIEWS[route.view](route);
-  setTitle();
-  hydrate();
-  if (route.view === 'discover' && ui.q.trim().length >= 2 && ui.search.q !== ui.q.trim()) runSearch(true);
+  $('#view').innerHTML = VIEWS[v](route);
+  setTitle(v);
+  hydrate(v);
+  if (v === 'discover' && ui.q.trim().length >= 2 && ui.search.q !== ui.q.trim()) runSearch(true);
 }
 // force: kullanıcının kendi işlemi. Arka plan güncellemeleri, yazı yazılan bir alanı silmesin diye bekler.
 function update(force = false) {
-  if (route.view === 'discover') { renderDiscoverResults(); return; }
+  const v = viewName();
+  if (chromeHidden(v) !== document.body.classList.contains('gated') || (v === 'gate') !== !!$('#view .gate')) { mount(); return; }
+  if (v === 'gate') { patchGate(); return; }
+  applyChrome(v);
+  if (v === 'discover') { renderDiscoverResults(); return; }
   const view = $('#view');
   const active = document.activeElement;
   if (!force && active && view.contains(active) && active.matches('input:not([type="checkbox"]), select, textarea') && !active.dataset.draft) return;
@@ -3829,7 +4185,7 @@ function update(force = false) {
   let sel = null;
   try { if (active && typeof active.selectionStart === 'number') sel = [active.selectionStart, active.selectionEnd]; } catch (e) { sel = null; }
   const y = window.scrollY;
-  view.innerHTML = VIEWS[route.view](route);
+  view.innerHTML = VIEWS[v](route);
   window.scrollTo(0, y);
   if (fk) {
     const el = document.querySelector(`[data-focus="${CSS.escape(fk)}"]`);
@@ -3838,8 +4194,8 @@ function update(force = false) {
       if (sel) { try { el.setSelectionRange(sel[0], sel[1]); } catch (e) { /* yok say */ } }
     }
   }
-  setTitle();
-  hydrate();
+  setTitle(v);
+  hydrate(v);
 }
 
 const navStack = [location.hash || '#diziler'];
@@ -3851,7 +4207,7 @@ addEventListener('hashchange', () => {
   route = parseRoute();
   ui.editingName = false;
   mount();
-  const toTop = route.view === 'show' || route.view === 'episode' || route.view === 'settings' || route.view === 'person';
+  const toTop = ['show', 'episode', 'settings', 'person', 'gate', 'privacy'].includes(viewName());
   window.scrollTo(0, toTop ? 0 : (scrollMemo[routeKey(route)] || 0));
   $('#view').focus({ preventScroll: true });
 });
@@ -3904,7 +4260,9 @@ document.addEventListener('click', ev => {
     case 'more-credits': ui.moreCredits.add(el.dataset.key); update(true); break;
     case 'retry-plan': ui.plan = null; update(true); break;
     case 'resume-clear': delete D.resume[+el.dataset.ep]; save(); update(true); break;
-    case 'login': sb.login(); break;
+    case 'login': startLogin(); break;
+    case 'guest': lsSet(GUEST_KEY, '1'); ui.gate.msg = ''; if (route.view === 'gate') location.hash = '#diziler'; else mount(); break;
+    case 'acct-menu': setAcctMenu(!acctOpen); break;
     case 'logout': logout(); break;
     case 'sync-account': syncNow(true).then(() => { update(true); toast({ text: 'Eşitlendi.' }); }, e => toast({ kind: 'error', text: sbErrorText(e) })); break;
     case 'report-comment': reportComment(id, +el.dataset.cid); break;
@@ -4048,13 +4406,15 @@ setInterval(() => {
 $('#brandMark').innerHTML = ICON.logo;
 for (const el of $$('[data-icon]')) el.outerHTML = ICON[el.dataset.icon];
 load();
+purgeLegacyKeys();
 const oauthBack = takeOAuthReturn();
+if (oauthBack && oauthBack.error) { ui.gate.msg = authErrorText(oauthBack.error); ui.gate.err = true; }
 route = parseRoute();
 mount();
 renderSync();
 refreshAll();
-if (oauthBack && oauthBack.error) toast({ kind: 'error', text: 'Giriş tamamlanamadı: ' + oauthBack.error, timeout: 9000 });
-else if (oauthBack) afterLogin(true);
+checkAuth();
+if (oauthBack && oauthBack.ok) afterLogin(true);
 else if (SERVER && sb.loggedIn()) afterLogin(false);
 })();
 </script>
