@@ -616,6 +616,12 @@ a.chip { display: inline-flex; align-items: center; color: inherit; text-decorat
 .sub-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .sub-row:last-child { border-bottom: 0; }
 
+/* Hesap ve moderasyon */
+.acct { display: flex; align-items: center; gap: 12px; }
+.acct .acct-av { width: 44px; height: 44px; border-radius: 14px; object-fit: cover; flex: none; font-size: 15px; }
+.cmt-acts { display: flex; flex-wrap: wrap; gap: 0 16px; }
+.cmt-acts .cmt-del + .cmt-del { margin-left: 0; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation-duration: .01ms !important; }
   .spinner, .spin-sm { animation-duration: 1.6s !important; }
@@ -804,7 +810,7 @@ function load() {
   } catch (e) { storageOK = false; }
 }
 let saveTimer = 0;
-function save(now = false) {
+function save(now = false, quiet = false) {
   clearTimeout(saveTimer);
   const write = () => {
     try { localStorage.setItem(LS_KEY, JSON.stringify(D)); storageOK = true; }
@@ -814,6 +820,7 @@ function save(now = false) {
     }
   };
   if (now) write(); else saveTimer = setTimeout(write, 200);
+  if (!quiet) scheduleSync();
 }
 addEventListener('pagehide', () => save(true));
 
@@ -1451,8 +1458,8 @@ function viewShow({ id }) {
     ${scoresBlock(s)}
   </section>`;
   const missing = [
-    !D.settings.mdblistKey && 'IMDb, Rotten Tomatoes ve Metacritic puanları için MDBList',
-    !D.settings.tmdbKey && 'izleme platformları, oyuncu fotoğrafları ve benzer diziler için TMDB',
+    !hasMdb() && 'IMDb, Rotten Tomatoes ve Metacritic puanları için MDBList',
+    !hasTmdb() && 'izleme platformları, oyuncu fotoğrafları ve benzer diziler için TMDB',
   ].filter(Boolean);
   if (missing.length) html += `<p class="hint">${esc(missing.join(', '))} anahtarını <a href="#ayarlar">Ayarlar</a>'dan ekleyebilirsin.</p>`;
   if (st) html += progressCard(s, st, now, followed);
@@ -1572,7 +1579,7 @@ function viewProfile() {
       ${connectionsSection()}
       <section class="sec"><div class="sec-head"><h2>Verilerin</h2></div>
         <div class="databox">
-          <p>Takip bilgilerin yalnızca bu tarayıcıda saklanır. Başka bir cihaza taşımak ya da güvenceye almak için yedek al; diğer cihazda “Dosyadan yükle” ya da “Yapıştırarak yükle” ile geri getir. Yedek dosyası API anahtarlarını da içerir; kimseyle paylaşma.</p>
+          <p>${SERVER && sb.loggedIn() ? 'Takip bilgilerin bu tarayıcıda ve hesabında saklanır; diğer cihazlarında giriş yapman yeterli. İstersen ayrıca yedek al;' : 'Takip bilgilerin yalnızca bu tarayıcıda saklanır. Başka bir cihaza taşımak ya da güvenceye almak için yedek al;'} diğer cihazda “Dosyadan yükle” ya da “Yapıştırarak yükle” ile geri getir. Yedek dosyası API anahtarlarını da içerir; kimseyle paylaşma.</p>
           <div class="btnrow">
             <button type="button" class="btn btn-sm" data-act="export">${ICON.download}<span>Yedeği indir</span></button>
             <button type="button" class="btn btn-sm" data-act="copy">${ICON.copy}<span>Yedeği kopyala</span></button>
@@ -1801,7 +1808,7 @@ async function applyImport(data) {
   const ok = await dialog({ title: 'Yedek geri yüklensin mi?', text: `Yedekte ${n} dizi ve ${m} izlenmiş bölüm var. Bu tarayıcıdaki mevcut takip bilgilerin bunlarla değiştirilecek.`, ok: 'Geri yükle' });
   if (!ok) return;
   for (const k of Object.keys(data.settings)) if (!data.settings[k] && D.settings[k]) data.settings[k] = D.settings[k];
-  if (data.settings.sbUrl !== D.settings.sbUrl) sb.reset();
+  if (!SERVER && data.settings.sbUrl !== D.settings.sbUrl) sb.reset();
   D = data;
   ui.open = {};
   resetExternal();
@@ -1846,8 +1853,14 @@ async function importPaste() {
   if (data) applyImport(data);
 }
 async function wipe() {
-  const ok = await dialog({ title: 'Tüm veriler silinsin mi?', text: 'Takip ettiğin diziler, izleme geçmişin, favorilerin, puanların ve kayıtlı anahtarların bu tarayıcıdan silinir. Ortak alandaki yorumların silinmez. İstersen önce yedek al.', ok: 'Hepsini sil', danger: true });
+  const online = SERVER && sb.loggedIn();
+  const ok = await dialog({ title: 'Tüm veriler silinsin mi?', text: online ? 'Takip ettiğin diziler, izleme geçmişin, favorilerin ve puanların bu tarayıcıdan ve hesabından silinir; hesaptan da çıkış yapılır. Yorumların silinmez. İstersen önce yedek al.' : 'Takip ettiğin diziler, izleme geçmişin, favorilerin, puanların ve kayıtlı anahtarların bu tarayıcıdan silinir. Ortak alandaki yorumların silinmez. İstersen önce yedek al.', ok: 'Hepsini sil', danger: true });
   if (!ok) return;
+  if (online) {
+    clearTimeout(syncTimer);
+    try { await sb.rest(`user_data?user_id=eq.${sb.uid()}`, { method: 'DELETE' }); } catch (e) { /* yok say */ }
+    syncMeta = {}; saveSyncMeta();
+  }
   D = blank();
   ui.open = {};
   sb.reset(); resetExternal();
@@ -1859,6 +1872,15 @@ async function wipe() {
 const TMDB_API = 'https://api.themoviedb.org/3';
 const TMDB_IMG = 'https://image.tmdb.org/t/p/';
 const MDB_API = 'https://api.mdblist.com';
+// Yayındaki sürümde TMDB ve MDBList anahtarları sunucuda durur (Supabase Edge Function "api")
+const SERVER = (() => {
+  const o = window.DIZI_SERVER;   // testler sunucuyu kapatabilir (null) ya da başka bir adrese yönlendirebilir
+  if (o === null) return null;
+  return o && o.url ? o : { url: 'https://wjrvftwxpyjzmxcufsuo.supabase.co', key: 'sb_publishable_rI4TYO4CUp99u33YkgP94w_dCRVE7MY' };
+})();
+const API_FN = SERVER ? SERVER.url + '/functions/v1/api' : '';
+const hasTmdb = () => !!(SERVER || (D.settings.tmdbKey || '').trim());
+const hasMdb = () => !!(SERVER || (D.settings.mdblistKey || '').trim());
 const SB_SESSION_KEY = 'dizi-ajanda:sb-session';
 const CACHE_KEY = 'dizi-ajanda:cache';
 const nfCompact = new Intl.NumberFormat('tr-TR', { notation: 'compact', maximumFractionDigits: 1 });
@@ -1905,11 +1927,12 @@ async function copyText(text, okMsg, title = 'Kopyala') {
 
 /* ================= TMDB: trend ve izleme platformları ================= */
 async function tmdb(path, params = {}, key = (D.settings.tmdbKey || '').trim()) {
-  if (!key) throw apiErr('no_key');
-  const u = new URL(TMDB_API + path);
+  if (!key && !SERVER) throw apiErr('no_key');
+  const u = new URL(key ? TMDB_API + path : API_FN + '/tmdb' + path);
   for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
   const opts = {};
-  if (/^eyJ/.test(key)) opts.headers = { Authorization: 'Bearer ' + key };
+  if (!key) { /* anahtar sunucuda */ }
+  else if (/^eyJ/.test(key)) opts.headers = { Authorization: 'Bearer ' + key };
   else u.searchParams.set('api_key', key);
   const res = await fetchT(u.toString(), opts);
   if (res.status === 401) throw apiErr('bad_key');
@@ -2017,11 +2040,11 @@ async function openTmdb(tmdbId, el) {
 /* ================= MDBList: IMDb, Rotten Tomatoes, Metacritic ================= */
 async function scoresFor(s) {
   const key = (D.settings.mdblistKey || '').trim();
-  if (!key) throw apiErr('no_key');
+  if (!key && !SERVER) throw apiErr('no_key');
   if (!s.imdb) return { noid: true };
   const hit = cacheGet('mdb', s.imdb, 3 * DAY);
   if (hit !== undefined) return hit;
-  const res = await fetchT(`${MDB_API}/imdb/show/${encodeURIComponent(s.imdb)}?apikey=${encodeURIComponent(key)}`);
+  const res = await fetchT(key ? `${MDB_API}/imdb/show/${encodeURIComponent(s.imdb)}?apikey=${encodeURIComponent(key)}` : `${API_FN}/mdb/imdb/show/${encodeURIComponent(s.imdb)}`);
   if (res.status === 401 || res.status === 403) throw apiErr('bad_key');
   if (res.status === 429) throw apiErr('limit');
   if (res.status === 404) { cacheSet('mdb', s.imdb, { none: true }); return { none: true }; }
@@ -2099,27 +2122,40 @@ function normSbUrl(v) {
 }
 const sb = {
   session: null, pending: null,
-  ready() { return !!(D.settings.sbUrl && D.settings.sbKey); },
-  base() { return D.settings.sbUrl; },
+  ready() { return !!(SERVER || (D.settings.sbUrl && D.settings.sbKey)); },
+  base() { return SERVER ? SERVER.url : D.settings.sbUrl; },
+  apikey() { return SERVER ? SERVER.key : D.settings.sbKey; },
+  loggedIn() { this.load(); return !!(this.session && this.session.access_token && !this.session.anon); },
+  login() { location.href = `${this.base()}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(location.origin + location.pathname)}`; },
+  logout() {
+    const s = this.session;
+    if (s && s.access_token) fetchT(this.base() + '/auth/v1/logout', { method: 'POST', headers: { apikey: this.apikey(), Authorization: 'Bearer ' + s.access_token } }).catch(() => {});
+    this.reset();
+  },
   uid() { return this.session ? this.session.uid : null; },
   reset() { this.session = null; try { localStorage.removeItem(SB_SESSION_KEY); } catch (e) { /* yok say */ } },
   load() {
     if (this.session) return;
     try {
       const s = JSON.parse(localStorage.getItem(SB_SESSION_KEY) || 'null');
-      if (s && s.url === this.base()) this.session = s;
+      if (s && s.url === this.base()) {
+        if (s.anon === undefined) s.anon = !!jwtClaims(s.access_token).is_anonymous;
+        if (!(SERVER && s.anon)) this.session = s;
+      }
     } catch (e) { /* yok say */ }
   },
   store(r) {
+    const c = jwtClaims(r.access_token), um = c.user_metadata || {};
     this.session = {
       url: this.base(), access_token: r.access_token, refresh_token: r.refresh_token,
       expires_at: r.expires_at || Math.floor(Date.now() / 1000) + (r.expires_in || 3600),
-      uid: (r.user && r.user.id) || (this.session && this.session.uid) || null,
+      uid: (r.user && r.user.id) || c.sub || (this.session && this.session.uid) || null,
+      anon: !!c.is_anonymous, email: c.email || '', name: um.full_name || um.name || '', avatar: safeImg(um.avatar_url || um.picture || ''),
     };
     try { localStorage.setItem(SB_SESSION_KEY, JSON.stringify(this.session)); } catch (e) { /* yok say */ }
   },
   async authCall(path, body) {
-    const res = await fetchT(this.base() + path, { method: 'POST', headers: { apikey: D.settings.sbKey, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const res = await fetchT(this.base() + path, { method: 'POST', headers: { apikey: this.apikey(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const j = await res.json().catch(() => ({}));
     if (!res.ok) throw apiErr(j.error_code || j.code || 'auth', j.msg || j.error_description || j.message || ('HTTP ' + res.status), { status: res.status });
     return j;
@@ -2135,6 +2171,7 @@ const sb = {
         try { this.store(await this.authCall('/auth/v1/token?grant_type=refresh_token', { refresh_token: this.session.refresh_token })); return this.session; }
         catch (e) { if (e.network) throw e; this.reset(); }
       }
+      if (SERVER) throw apiErr('login', 'Giriş gerekli');
       this.store(await this.authCall('/auth/v1/signup', {}));
       return this.session;
     })().finally(() => { this.pending = null; });
@@ -2143,7 +2180,7 @@ const sb = {
   async rest(path, { method = 'GET', body, prefer } = {}) {
     let s = await this.auth();
     const send = () => {
-      const headers = { apikey: D.settings.sbKey, Authorization: 'Bearer ' + s.access_token };
+      const headers = { apikey: this.apikey(), Authorization: 'Bearer ' + s.access_token };
       if (body !== undefined) headers['Content-Type'] = 'application/json';
       if (prefer) headers.Prefer = prefer;
       return fetchT(this.base() + '/rest/v1/' + path, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined });
@@ -2160,6 +2197,8 @@ const sb = {
 };
 function sbErrorText(e) {
   if (!e) return 'Bilinmeyen bir hata oluştu.';
+  if (e.code === 'login') return 'Bunun için giriş yapman gerekiyor.';
+  if (e.code === 'P0001' && e.message) return e.message;
   if (e.network) return 'Ortak alana bağlanılamadı. Proje adresini kontrol et; ücretsiz proje duraklatılmış olabilir.';
   const m = `${e.message || ''} ${e.code || ''}`;
   if (/anonymous/i.test(m) && /disabled|not enabled/i.test(m)) return 'Supabase\'de anonim girişler kapalı. Authentication → Sign In / Providers bölümünden “Allow anonymous sign-ins” seçeneğini aç.';
@@ -2170,13 +2209,13 @@ function sbErrorText(e) {
   return 'Ortak alan hatası: ' + (e.message || e.code || 'bilinmiyor');
 }
 async function ensureSocial(showId, force = false) {
-  if (!sb.ready() || !showId) return;
+  if (!sb.ready() || !showId || (SERVER && !sb.loggedIn())) return;
   const st = ui.social[showId] || (ui.social[showId] = {});
   if (st.loading) return;
   if (!force && (st.error || (st.at && Date.now() - st.at < 2 * MIN))) return;
   st.loading = true;
   try {
-    const comments = await sb.rest(`comments?select=id,user_id,author_name,episode_id,body,spoiler,created_at&show_id=eq.${showId}&order=created_at.desc&limit=500`);
+    const comments = await sb.rest(`comments?select=id,user_id,author_name,episode_id,body,spoiler,created_at${SERVER ? ',hidden' : ''}&show_id=eq.${showId}&order=created_at.desc&limit=500`);
     const ratings = await sb.rest(`ratings?select=user_id,author_name,score,updated_at&show_id=eq.${showId}&order=updated_at.desc&limit=200`);
     st.comments = Array.isArray(comments) ? comments : [];
     st.ratings = Array.isArray(ratings) ? ratings : [];
@@ -2207,6 +2246,7 @@ async function submitComment(form) {
   const text = form.elements.body.value.trim();
   if (!text) { form.elements.body.focus(); return; }
   if (!sb.ready()) { location.hash = '#ayarlar'; return; }
+  if (SERVER && !sb.loggedIn()) { sb.login(); return; }
   if (!D.profile.name && !(await askName())) return;
   const btn = form.querySelector('button[type="submit"]');
   if (btn) btn.disabled = true;
@@ -2245,6 +2285,7 @@ async function rateShow(showId, score) {
   D.ratings[showId] = { s: score, t: Date.now() };
   save(); update(true);
   if (!sb.ready()) { toast({ text: `Puanın kaydedildi: ${score}/10` }); return; }
+  if (SERVER && !sb.loggedIn()) { toast({ text: `Puanın bu cihaza kaydedildi: ${score}/10. Arkadaşlarınla paylaşmak için giriş yap.` }); return; }
   if (!D.profile.name && !(await askName())) { toast({ text: 'Puanın bu cihaza kaydedildi. Arkadaşlarının görmesi için bir ad gerekiyor.' }); return; }
   try {
     const sess = await sb.auth();
@@ -2258,7 +2299,7 @@ async function rateShow(showId, score) {
 async function unrateShow(showId) {
   delete D.ratings[showId];
   save(); update(true);
-  if (!sb.ready()) return;
+  if (!sb.ready() || (SERVER && !sb.loggedIn())) return;
   try {
     const sess = await sb.auth();
     await sb.rest(`ratings?show_id=eq.${showId}&user_id=eq.${sess.uid}`, { method: 'DELETE' });
@@ -2337,15 +2378,15 @@ function ensureExtras(id) {
   if (!('imdb' in s)) return;   // eski kayıt: dış kimlikler yenilemeden sonra gelecek
   const x = ui.ext[id] || (ui.ext[id] = {});
   const done = () => { if (route.view === 'show' && route.id === id) update(); };
-  if (D.settings.mdblistKey && !x.scores) {
+  if (hasMdb() && !x.scores) {
     x.scores = { loading: true };
     scoresFor(s).then(d => { x.scores = { data: d }; }, e => { x.scores = { error: e }; }).finally(done);
   }
-  if (D.settings.tmdbKey && !x.prov) {
+  if (hasTmdb() && !x.prov) {
     x.prov = { loading: true };
     providersFor(s).then(d => { x.prov = { data: d }; }, e => { x.prov = { error: e }; }).finally(done);
   }
-  if (D.settings.tmdbKey && !x.bundle) {
+  if (hasTmdb() && !x.bundle) {
     x.bundle = { loading: true };
     tmdbBundle(s).then(d => { x.bundle = { data: d }; if (d && !d.nomatch) applyTrName(id, d.trName); }, e => { x.bundle = { error: e }; }).finally(done);
   }
@@ -2356,7 +2397,7 @@ function ensureExtras(id) {
   }
   // TMDB yoksa, dizi orada eşleşmediyse ya da anahtar geçersizse oyuncular TVmaze'den
   const b = x.bundle;
-  const needTvm = !D.settings.tmdbKey || (b && ((b.data && b.data.nomatch) || (b.error && b.error.code === 'bad_key')));
+  const needTvm = !hasTmdb() || (b && ((b.data && b.data.nomatch) || (b.error && b.error.code === 'bad_key')));
   if (needTvm && !x.tvmc) {
     x.tvmc = { loading: true };
     tvmCredits(s).then(d => { x.tvmc = { data: d }; }, e => { x.tvmc = { error: e }; }).finally(done);
@@ -2371,7 +2412,7 @@ function extErrorText(e, label) {
 }
 function scoresBlock(s) {
   const x = ui.ext[s.id] || {};
-  if (!D.settings.mdblistKey) return '';
+  if (!hasMdb()) return '';
   const st = x.scores;
   if (!st || st.loading) return '<div class="scores" aria-busy="true"><span class="scores-note">Puanlar yükleniyor…</span></div>';
   if (st.error) return `<div class="scores"><span class="scores-note">${esc(extErrorText(st.error, 'MDBList'))} <button type="button" class="link-btn small" data-act="retry-ext" data-id="${s.id}" data-part="scores">Tekrar dene</button></span></div>`;
@@ -2399,7 +2440,7 @@ function scoresBlock(s) {
   return `<div class="scores">${badges.join('')}<span class="scores-note">Puanlar MDBList üzerinden gelir.</span></div>`;
 }
 function provBlock(s) {
-  if (!D.settings.tmdbKey) return '';
+  if (!hasTmdb()) return '';
   const x = ui.ext[s.id] || {};
   const st = x.prov;
   const cName = countryName(D.settings.country);
@@ -2427,7 +2468,8 @@ function rateBlock(s) {
   const others = rows.filter(r => r.user_id !== sb.uid());
   const scale = Array.from({ length: 10 }, (_, i) => i + 1).map(n => `<button type="button" role="radio" aria-checked="${n === mine}" class="rate-btn${n <= mine ? ' on' : ''}" data-act="rate" data-id="${s.id}" data-score="${n}" data-focus="rate-${n}" aria-label="${n} puan">${n}</button>`).join('');
   let social = '';
-  if (!sb.ready()) social = '<p class="rate-note">Arkadaşlarının puanlarını görmek için <a href="#ayarlar">ortak alanı bağla</a>.</p>';
+  if (SERVER && !sb.loggedIn()) social = `<p class="rate-note">Arkadaşlarının puanlarını görmek ve puanını onlarla paylaşmak için ${canLogin() ? '<button type="button" class="link-btn small" data-act="login">Google ile giriş yap</button>' : 'yayındaki sitede giriş yap'}.</p>`;
+  else if (!sb.ready()) social = '<p class="rate-note">Arkadaşlarının puanlarını görmek için <a href="#ayarlar">ortak alanı bağla</a>.</p>';
   else if (st && st.error && !st.ratings) social = `<p class="rate-note">${esc(sbErrorText(st.error))}</p>`;
   else if (rows.length) {
     social = `<div class="rate-meta"><span class="rate-avg">${nf1.format(avg)}</span><span>arkadaş ortalaması · ${rows.length} kişi</span></div>
@@ -2460,9 +2502,9 @@ function commentItem(showId, c, now) {
   return `<li class="cmt">
     <span class="cmt-av" style="--h:${hue(c.author_name)}" aria-hidden="true">${esc(initials(c.author_name))}</span>
     <div>
-      <div class="cmt-head"><strong>${esc(c.author_name)}</strong>${mine ? '<span class="cmt-you">sen</span>' : ''}${isNaN(t) ? '' : `<time datetime="${esc(c.created_at)}">${esc(relTime(t, now))}</time>`}${c.spoiler ? '<span class="pill pill-wait">spoiler</span>' : ''}</div>
+      <div class="cmt-head"><strong>${esc(c.author_name)}</strong>${mine ? '<span class="cmt-you">sen</span>' : ''}${isNaN(t) ? '' : `<time datetime="${esc(c.created_at)}">${esc(relTime(t, now))}</time>`}${c.spoiler ? '<span class="pill pill-wait">spoiler</span>' : ''}${c.hidden ? '<span class="pill pill-bad">gizlendi</span>' : ''}</div>
       ${hidden ? `<button type="button" class="spoiler-cover" data-act="reveal" data-key="c${c.id}">Spoiler içeriyor. Okumak için dokun.</button>` : `<p class="cmt-text">${esc(c.body)}</p>`}
-      ${mine ? `<button type="button" class="link-btn cmt-del" data-act="del-comment" data-id="${showId}" data-cid="${c.id}">Sil</button>` : ''}
+      ${commentActions(showId, c, mine)}
     </div>
   </li>`;
 }
@@ -2471,6 +2513,7 @@ function commentsBlock(s, epId = null) {
   if (!sb.ready()) {
     return section(title, 0, `<div class="empty"><p class="empty-title">Yorumlar arkadaşlarınla ortak bir alanda tutuluyor.</p><p>Başlamak için Ayarlar'dan ortak alanı bağla; kurulum adımları orada.</p><a class="btn" href="#ayarlar">Ayarlar'a git</a></div>`);
   }
+  if (SERVER && !sb.loggedIn()) return section(title, 0, loginCard());
   const st = ui.social[s.id];
   if (!st || (!st.comments && !st.error)) return section(title, 0, `<div class="center">${spinner('Yorumlar yükleniyor')}</div>`);
   if (st.error && !st.comments) {
@@ -2490,7 +2533,7 @@ function commentsBlock(s, epId = null) {
 function trendCard(it, rank) { return tmdbCard(it, { rank }); }
 function trendSection() {
   const head = (extra = '') => `<div class="sec-head"><h2>Dünyada trend</h2>${extra}</div>`;
-  if (!D.settings.tmdbKey) {
+  if (!hasTmdb()) {
     return `<section class="sec">${head()}${emptyCard('TMDB anahtarı gerekiyor.', 'Ayarlar\'dan ücretsiz TMDB anahtarını ekleyince dünyada en çok izlenen ve konuşulan diziler burada görünür.', '#ayarlar', 'Ayarlar\'a git')}</section>`;
   }
   const w = ui.trendWin;
@@ -2655,7 +2698,7 @@ async function tvmCredits(s) {
 }
 function creditsState(s) {
   const x = ui.ext[s.id] || {};
-  if (D.settings.tmdbKey && 'imdb' in s) {
+  if (hasTmdb() && 'imdb' in s) {
     const b = x.bundle;
     if (!b || b.loading) return { loading: true };
     if (b.data && !b.data.nomatch) return { data: b.data, src: 't' };
@@ -2725,7 +2768,7 @@ function musicBlock(s) {
     </div></section>`;
 }
 function similarBlock(s) {
-  if (!D.settings.tmdbKey) return '';
+  if (!hasTmdb()) return '';
   const b = (ui.ext[s.id] || {}).bundle;
   let body;
   if (!b || b.loading) body = '<p class="prov-note" aria-busy="true">Öneriler yükleniyor…</p>';
@@ -2781,7 +2824,7 @@ async function loadForYou() {
   if (route.view === 'discover') renderDiscoverResults();
 }
 function forYouSection() {
-  if (!D.settings.tmdbKey) return '';
+  if (!hasTmdb()) return '';
   const seeds = forYouSeeds();
   if (!seeds.length) return '';
   const st = ui.forYou && ui.forYou.key === forYouKey(seeds) ? ui.forYou : null;
@@ -2886,7 +2929,7 @@ async function personFor(src, id) {
 }
 function ensurePerson(src, id) {
   const key = src + id;
-  if (ui.person[key] || (src === 't' && !D.settings.tmdbKey)) return;
+  if (ui.person[key] || (src === 't' && !hasTmdb())) return;
   ui.person[key] = { loading: true };
   personFor(src, id).then(d => { ui.person[key] = { data: d }; }, e => { ui.person[key] = { error: e }; })
     .finally(() => { if (route.view === 'person' && route.src === src && route.id === id) update(); });
@@ -2913,7 +2956,7 @@ function creditCard(c) {
 function viewPerson({ src, id }) {
   const key = src + id;
   let html = `<div class="wrap"><div class="backbar"><button type="button" class="link-btn" data-act="back">${ICON.back}<span>Geri</span></button></div>`;
-  if (src === 't' && !D.settings.tmdbKey) return html + `<div class="sec">${emptyCard('TMDB anahtarı gerekiyor.', 'Bu kişinin bilgileri TMDB\'den geliyor. Ayarlar\'dan ücretsiz TMDB anahtarını ekleyebilirsin.', '#ayarlar', 'Ayarlar\'a git')}</div></div>`;
+  if (src === 't' && !hasTmdb()) return html + `<div class="sec">${emptyCard('TMDB anahtarı gerekiyor.', 'Bu kişinin bilgileri TMDB\'den geliyor. Ayarlar\'dan ücretsiz TMDB anahtarını ekleyebilirsin.', '#ayarlar', 'Ayarlar\'a git')}</div></div>`;
   const st = ui.person[key];
   if (!st || st.loading) return html + `<div class="center tall">${spinner()}</div></div>`;
   if (st.error) {
@@ -2964,7 +3007,7 @@ function viewPerson({ src, id }) {
 
 /* ================= Bölüm sayfası: ekip, konuk oyuncular, şarkılar ================= */
 async function episodeExtra(s, e) {
-  if (D.settings.tmdbKey && e[E_N] != null) {
+  if (hasTmdb() && e[E_N] != null) {
     const tid = await tmdbIdFor(s).catch(err => { if (err.code === 'bad_key') return null; throw err; });
     if (tid) {
       const key = `${tid}:${e[E_S]}:${e[E_N]}`;
@@ -3081,7 +3124,7 @@ function applyTrName(id, name) {
 let trSyncing = false;
 // Takip edilen dizilerin Türkçe adları arka planda, ayda bir tazelenir
 async function syncTrNames() {
-  if (trSyncing || !D.settings.tmdbKey) return;
+  if (trSyncing || !hasTmdb()) return;
   const todo = Object.values(D.shows).filter(s => (s.imdb || s.tvdb) && (!('trName' in s) || Date.now() - (s.trAt || 0) > 30 * DAY));
   if (!todo.length) return;
   trSyncing = true;
@@ -3304,7 +3347,7 @@ function viewSubs() {
   const now = Date.now();
   let html = `<div class="wrap narrow"><div class="backbar"><button type="button" class="link-btn" data-act="back">${ICON.back}<span>Geri</span></button></div><h1 class="page-title">Abonelik planı</h1>`;
   const end = '</div>';
-  if (!D.settings.tmdbKey) return html + emptyCard('TMDB anahtarı gerekiyor.', 'Hangi dizinin hangi platformda olduğu TMDB üzerinden JustWatch\'tan gelir.', '#ayarlar', 'Ayarlar\'a git') + end;
+  if (!hasTmdb()) return html + emptyCard('TMDB anahtarı gerekiyor.', 'Hangi dizinin hangi platformda olduğu TMDB üzerinden JustWatch\'tan gelir.', '#ayarlar', 'Ayarlar\'a git') + end;
   if (!Object.keys(D.shows).length) return html + emptyCard('Henüz takip ettiğin dizi yok.', 'Dizi takip etmeye başlayınca bu ay hangi platformların gerektiği burada hesaplanır.', '#kesfet', 'Dizi bul') + end;
   const st = ui.plan && ui.plan.key === planKey() ? ui.plan : null;
   if (!st || st.loading) return html + `<div class="center" data-need-plan="1">${spinner('Platformlar inceleniyor')}</div>` + end;
@@ -3352,8 +3395,225 @@ function subsTeaser() {
     <div class="btnrow"><a class="btn btn-sm" href="#abonelik">Planı aç</a></div></div></section>`;
 }
 
+/* ================= Hesap (Google) ve cihazlar arası eşitleme ================= */
+const SITE_URL = 'https://enesmetesi.github.io/dizi-ajanda/';
+const SYNC_KEY = 'dizi-ajanda:sync';
+let syncMeta = {};
+try { syncMeta = JSON.parse(localStorage.getItem(SYNC_KEY) || '{}') || {}; } catch (e) { syncMeta = {}; }
+const saveSyncMeta = () => { try { localStorage.setItem(SYNC_KEY, JSON.stringify(syncMeta)); } catch (e) { /* yok say */ } };
+const canLogin = () => /^https?:$/.test(location.protocol);
+function jwtClaims(t) {
+  try {
+    const p = String(t).split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(decodeURIComponent(escape(atob(p + '='.repeat((4 - p.length % 4) % 4))))) || {};
+  } catch (e) { return {}; }
+}
+function hashStr(s) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(36) + '.' + s.length;
+}
+// Hesaba yalnızca kullanıcının kendi işaretleri gider; dizi ve bölüm bilgileri her cihazda TVmaze'den yeniden alınır
+function syncState() {
+  const shows = {};
+  for (const [id, s] of Object.entries(D.shows)) shows[id] = { a: s.addedAt || 0, f: s.fav ? 1 : 0, x: s.stopped ? 1 : 0, n: s.name || '', i: s.img || '' };
+  return { v: 1, shows, watched: D.watched, ratings: D.ratings, resume: D.resume, subs: D.subs, name: D.profile.name || '', country: D.settings.country };
+}
+function applySyncState(st) {
+  const next = {};
+  for (const [id, x] of Object.entries(st.shows || {})) {
+    if (!Number.isFinite(+id) || !x) continue;
+    const cur = D.shows[id] || cache.get(+id) || { id: +id, name: String(x.n || 'Dizi'), img: safeImg(x.i), genres: [], eps: [], fetchedAt: 0 };
+    next[id] = { ...cur, addedAt: +x.a || Date.now(), fav: !!x.f, stopped: !!x.x };
+    delete next[id].today;
+  }
+  D.shows = next;
+  D.watched = st.watched && typeof st.watched === 'object' ? st.watched : {};
+  D.ratings = st.ratings && typeof st.ratings === 'object' ? st.ratings : {};
+  D.resume = st.resume && typeof st.resume === 'object' ? st.resume : {};
+  D.subs = st.subs && typeof st.subs === 'object' ? st.subs : {};
+  if (st.name) D.profile.name = String(st.name).slice(0, 40);
+  if (/^[A-Z]{2}$/.test(st.country || '')) D.settings.country = st.country;
+}
+// İki cihaz aynı anda değiştirdiyse birleştir: takip ve izleme işaretleri birleşir, puanlarda en yenisi kalır
+function mergeStates(a, b) {
+  const ratings = { ...(b.ratings || {}) };
+  for (const [k, r] of Object.entries(a.ratings || {})) if (!ratings[k] || (r.t || 0) >= (ratings[k].t || 0)) ratings[k] = r;
+  return {
+    v: 1, shows: { ...(b.shows || {}), ...(a.shows || {}) }, watched: { ...(b.watched || {}), ...(a.watched || {}) }, ratings,
+    resume: { ...(b.resume || {}), ...(a.resume || {}) }, subs: { ...(b.subs || {}), ...(a.subs || {}) },
+    name: a.name || b.name || '', country: a.country || b.country,
+  };
+}
+let syncBusy = null, syncTimer = 0, lastPull = 0;
+function scheduleSync() {
+  if (!SERVER || !sb.loggedIn()) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => { syncNow().catch(() => {}); }, 2500);
+}
+async function pushState(state, rev) {
+  const uid = sb.uid();
+  const body = { data: state, updated_at: new Date().toISOString() };
+  const rows = rev
+    ? await sb.rest(`user_data?user_id=eq.${uid}&updated_at=eq.${encodeURIComponent(rev)}`, { method: 'PATCH', body, prefer: 'return=representation' })
+    : await sb.rest('user_data?on_conflict=user_id', { method: 'POST', body: { user_id: uid, ...body }, prefer: 'resolution=merge-duplicates,return=representation' });
+  if (!Array.isArray(rows) || !rows.length) return false;   // bu arada başka bir cihaz yazmış
+  syncMeta = { uid, rev: rows[0].updated_at, hash: hashStr(JSON.stringify(state)), at: Date.now() };
+  saveSyncMeta();
+  return true;
+}
+function syncNow(pull = false) {
+  if (!SERVER || !sb.loggedIn()) return Promise.resolve();
+  if (syncBusy) return syncBusy.then(() => syncNow(pull));
+  syncBusy = (async () => {
+    const uid = sb.uid();
+    if (syncMeta.uid !== uid) syncMeta = { uid };
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const local = syncState();
+      const dirty = hashStr(JSON.stringify(local)) !== syncMeta.hash;
+      if (!pull && syncMeta.rev) {
+        if (!dirty) return;
+        if (await pushState(local, syncMeta.rev)) return;
+        pull = true;
+        continue;
+      }
+      const rows = await sb.rest(`user_data?select=data,updated_at&user_id=eq.${uid}`);
+      lastPull = Date.now();
+      const row = Array.isArray(rows) ? rows[0] : null;
+      if (!row) { if (await pushState(local, null)) return; continue; }
+      if (row.updated_at === syncMeta.rev) {
+        if (!dirty) { syncMeta.at = Date.now(); saveSyncMeta(); return; }
+        if (await pushState(local, row.updated_at)) return;
+        continue;
+      }
+      // Hesapta daha yeni bir sürüm var: bu cihazda değişiklik yoksa onu al, varsa birleştir
+      const adopt = !!syncMeta.rev && !dirty;
+      applySyncState(adopt ? (row.data || {}) : mergeStates(local, row.data || {}));
+      save(true, true);
+      update();
+      refreshAll();
+      if (adopt) {
+        syncMeta = { uid, rev: row.updated_at, hash: hashStr(JSON.stringify(syncState())), at: Date.now() };
+        saveSyncMeta();
+        return;
+      }
+      if (await pushState(syncState(), row.updated_at)) return;
+    }
+  })().finally(() => { syncBusy = null; });
+  return syncBusy;
+}
+// Google'dan dönüşte adres çubuğundaki oturum bilgisini al ve hemen adresten sil
+function takeOAuthReturn() {
+  const h = location.hash;
+  if (!/(^#|&)(access_token|error_description)=/.test(h)) return null;
+  const p = new URLSearchParams(h.slice(1));
+  history.replaceState(null, '', location.pathname + location.search + '#ayarlar');
+  navStack[0] = '#ayarlar';
+  if (p.get('error_description')) return { error: p.get('error_description').replace(/\+/g, ' ') };
+  if (!SERVER || !p.get('access_token')) return null;
+  sb.reset();
+  sb.store({ access_token: p.get('access_token'), refresh_token: p.get('refresh_token'), expires_in: +p.get('expires_in') || 3600, expires_at: +p.get('expires_at') || 0 });
+  return { ok: true };
+}
+async function afterLogin(fresh) {
+  const s = sb.session;
+  if (s && s.name && !D.profile.name) { D.profile.name = s.name.slice(0, 40); save(true, true); }
+  try { const a = await sb.rest(`admins?select=user_id&user_id=eq.${sb.uid()}`); sb.admin = Array.isArray(a) && a.length > 0; }
+  catch (e) { sb.admin = false; }
+  ui.social = {};
+  let err = null;
+  try { await syncNow(true); } catch (e) { err = e; }
+  if (fresh) {
+    if (err) toast({ kind: 'error', text: 'Giriş yapıldı ama veriler hesaba eşitlenemedi. ' + sbErrorText(err), timeout: 9000 });
+    else toast({ text: `Giriş yapıldı${s && s.email ? ': ' + s.email : ''}. Takip listen artık hesabında.` });
+  }
+  update(true);
+}
+async function logout() {
+  const ok = await dialog({ title: 'Çıkış yapılsın mı?', text: 'Bu cihazdaki takip listen olduğu gibi kalır; hesabındaki kopya da silinmez.', ok: 'Çıkış yap' });
+  if (!ok) return;
+  clearTimeout(syncTimer);
+  await syncNow().catch(() => {});
+  sb.logout();
+  sb.admin = false;
+  syncMeta = {};
+  saveSyncMeta();
+  ui.social = {};
+  update(true);
+  toast({ text: 'Çıkış yapıldı.' });
+}
+const loginBtn = () => (canLogin()
+  ? `<div class="btnrow"><button type="button" class="btn btn-primary btn-sm" data-act="login">${ICON.user}<span>Google ile giriş yap</span></button></div>`
+  : `<p class="small muted">Giriş yalnızca yayındaki sitede çalışır: <a href="${SITE_URL}" target="_blank" rel="noopener">${SITE_URL.replace('https://', '')}</a></p>`);
+const loginCard = (title = 'Yorumlar giriş yapanlara açık.') => `<div class="empty"><p class="empty-title">${esc(title)}</p><p>Google hesabınla giriş yapınca arkadaşlarının yorumlarını okuyup yorum yazabilirsin; takip listen de bütün cihazlarında aynı olur.</p>${loginBtn()}</div>`;
+function accountCard() {
+  if (!sb.loggedIn()) {
+    return `<section class="set-card"><div class="set-head"><h2>Hesap</h2><span class="pill pill-end">Giriş yapılmadı</span></div>
+      <p>Google hesabınla giriş yapınca takip listen, izlediğin bölümler, puanların ve ayarların bütün cihazlarında aynı olur; arkadaşlarının yorumlarını okuyup yorum yazabilirsin. Giriş yapmadan da kullanabilirsin; o zaman veriler yalnızca bu cihazda kalır.</p>
+      ${loginBtn()}</section>`;
+  }
+  const s = sb.session;
+  const who = s.name || s.email || 'Hesabın';
+  const av = s.avatar ? `<img class="acct-av" src="${esc(s.avatar)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : `<span class="mini-av acct-av" style="--h:${hue(who)}" aria-hidden="true">${esc(initials(who))}</span>`;
+  return `<section class="set-card"><div class="set-head"><h2>Hesap</h2><span class="pill pill-run">Giriş yapıldı</span></div>
+    <div class="acct">${av}<div><b>${esc(who)}</b>${s.email && s.email !== who ? `<div class="small muted">${esc(s.email)}</div>` : ''}${sb.admin ? '<div class="small"><span class="pill pill-run">Yönetici</span></div>' : ''}</div></div>
+    <p class="small muted">${syncMeta.at ? `Son eşitleme ${esc(relTime(syncMeta.at, Date.now()))}. ` : ''}Takip listen, izlediklerin, puanların ve ayarların bu hesapta saklanıyor.</p>
+    <div class="btnrow"><button type="button" class="btn btn-sm" data-act="sync-account">${ICON.refresh}<span>Şimdi eşitle</span></button><button type="button" class="btn btn-sm btn-ghost" data-act="logout">Çıkış yap</button></div></section>`;
+}
+const basicsForm = S => `<form class="set-form" data-form="basics">
+    <label for="setCountry">Nerede izlenir bilgisi bu ülkeye göre gösterilir</label>
+    <select id="setCountry" name="country">${COUNTRIES.map(([c, n]) => `<option value="${c}"${c === S.country ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>
+    <label for="setName">Yorumlarında ve puanlarında görünen adın</label>
+    <input id="setName" name="name" maxlength="40" value="${esc(D.profile.name)}" placeholder="Adın" autocomplete="nickname">
+    <div class="btnrow"><button type="submit" class="btn btn-primary btn-sm">Kaydet</button></div>
+  </form>`;
+function viewSettingsServer() {
+  return `<div class="wrap narrow">
+    <div class="backbar"><button type="button" class="link-btn" data-act="back">${ICON.back}<span>Geri</span></button></div>
+    <h1 class="page-title">Ayarlar</h1>
+    ${accountCard()}
+    <section class="set-card"><h2>Ülke ve görünen ad</h2>${basicsForm(D.settings)}</section>
+    <section class="set-card"><h2>Veri kaynakları</h2>
+      <p>Bölüm takvimi TVmaze'den; trend, öneriler, oyuncular ve platformlar TMDB'den; puanlar MDBList'ten gelir. Bu bağlantılar sitenin sunucusu üzerinden çalışır, anahtar girmen gerekmez.</p></section>
+    <footer class="foot">Bu ürün TMDB API'sini kullanır ancak TMDB tarafından onaylanmamıştır. Giriş yapmazsan takip bilgilerin yalnızca bu tarayıcıda saklanır; giriş yaparsan hesabına da kaydedilir.</footer>
+  </div>`;
+}
+/* ================= Yorum bildirme ve moderasyon ================= */
+function commentActions(showId, c, mine) {
+  const b = [];
+  if (mine || sb.admin) b.push(`<button type="button" class="link-btn cmt-del" data-act="del-comment" data-id="${showId}" data-cid="${c.id}">Sil</button>`);
+  if (SERVER && sb.loggedIn() && !mine) b.push(`<button type="button" class="link-btn cmt-del" data-act="report-comment" data-id="${showId}" data-cid="${c.id}">Bildir</button>`);
+  if (sb.admin) b.push(`<button type="button" class="link-btn cmt-del" data-act="hide-comment" data-id="${showId}" data-cid="${c.id}" data-hide="${c.hidden ? 0 : 1}">${c.hidden ? 'Göster' : 'Gizle'}</button>`);
+  return b.length ? `<div class="cmt-acts">${b.join('')}</div>` : '';
+}
+async function reportComment(showId, cid) {
+  const ok = await dialog({ title: 'Yorum bildirilsin mi?', text: 'Üç kişi bildirince yorum kendiliğinden gizlenir; yönetici de inceler.', ok: 'Bildir' });
+  if (!ok) return;
+  try {
+    await sb.rest('reports', { method: 'POST', body: { comment_id: cid }, prefer: 'return=minimal' });
+    toast({ text: 'Yorum bildirildi. Teşekkürler.' });
+    ensureSocial(showId, true);
+  } catch (e) {
+    const dup = e.status === 409 || e.code === '23505';
+    toast({ kind: dup ? 'info' : 'error', text: dup ? 'Bu yorumu zaten bildirmiştin.' : sbErrorText(e) });
+  }
+}
+async function setHidden(showId, cid, hide) {
+  try {
+    await sb.rest(`comments?id=eq.${cid}`, { method: 'PATCH', body: { hidden: hide }, prefer: 'return=minimal' });
+    const st = ui.social[showId];
+    const c = st && st.comments && st.comments.find(x => x.id === cid);
+    if (c) c.hidden = hide;
+    update(true);
+    toast({ text: hide ? 'Yorum gizlendi.' : 'Yorum yeniden görünür.' });
+  } catch (e) {
+    toast({ kind: 'error', text: sbErrorText(e) });
+  }
+}
+
 /* ================= Ayarlar ve bölüm sayfası ================= */
 function viewSettings() {
+  if (SERVER) return viewSettingsServer();
   const S = D.settings;
   const msg = k => { const st = ui.keyState[k]; return st && st.msg ? `<p class="set-msg ${st.state === 'ok' ? 'ok' : st.state === 'bad' ? 'bad' : ''}" role="status">${esc(st.msg)}</p>` : ''; };
   const keyForm = (k, id, label, ph) => `<form class="set-form" data-form="key" data-key="${k}">
@@ -3494,6 +3754,7 @@ function viewEpisode({ id, ep }) {
   return html + footer() + '</div>';
 }
 function connectionsSection() {
+  if (SERVER) return `<div class="sec">${accountCard()}</div>`;
   const row = (label, k) => `<div class="conn-row"><span>${label}</span>${keyPill(k)}</div>`;
   return `<section class="sec"><div class="sec-head"><h2>Ayarlar ve bağlantılar</h2></div>
     <div class="databox"><div class="conn">${row('Puanlar (MDBList)', 'mdblistKey')}${row('Trend ve platformlar (TMDB)', 'tmdbKey')}${row('Ortak yorumlar ve puanlar (Supabase)', 'sb')}</div>
@@ -3643,6 +3904,11 @@ document.addEventListener('click', ev => {
     case 'more-credits': ui.moreCredits.add(el.dataset.key); update(true); break;
     case 'retry-plan': ui.plan = null; update(true); break;
     case 'resume-clear': delete D.resume[+el.dataset.ep]; save(); update(true); break;
+    case 'login': sb.login(); break;
+    case 'logout': logout(); break;
+    case 'sync-account': syncNow(true).then(() => { update(true); toast({ text: 'Eşitlendi.' }); }, e => toast({ kind: 'error', text: sbErrorText(e) })); break;
+    case 'report-comment': reportComment(id, +el.dataset.cid); break;
+    case 'hide-comment': setHidden(id, +el.dataset.cid, el.dataset.hide === '1'); break;
     case 'rate': rateShow(id, +el.dataset.score); break;
     case 'unrate': unrateShow(id); break;
     case 'reveal': ui.reveal[el.dataset.key] = true; update(true); break;
@@ -3766,6 +4032,7 @@ addEventListener('offline', renderSync);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') { save(true); return; }
   refreshAll();
+  if (SERVER && sb.loggedIn() && Date.now() - lastPull > 60000) syncNow(true).catch(() => {});
   const a = document.activeElement;
   if (!a || !a.matches('input, textarea, select')) update();
 });
@@ -3781,10 +4048,14 @@ setInterval(() => {
 $('#brandMark').innerHTML = ICON.logo;
 for (const el of $$('[data-icon]')) el.outerHTML = ICON[el.dataset.icon];
 load();
+const oauthBack = takeOAuthReturn();
 route = parseRoute();
 mount();
 renderSync();
 refreshAll();
+if (oauthBack && oauthBack.error) toast({ kind: 'error', text: 'Giriş tamamlanamadı: ' + oauthBack.error, timeout: 9000 });
+else if (oauthBack) afterLogin(true);
+else if (SERVER && sb.loggedIn()) afterLogin(false);
 })();
 </script>
 </body>
