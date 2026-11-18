@@ -660,6 +660,12 @@ body.gated main { padding-bottom: 0; }
 .gate-msg a { color: inherit; font-weight: 600; }
 .gate-note { display: grid; grid-template-columns: 18px 1fr; gap: 8px; align-items: start; font-size: 14px; line-height: 1.45; color: var(--muted); }
 .gate-note svg { width: 18px; height: 18px; margin-top: 1px; color: var(--brand); }
+.gsi-slot { display: flex; justify-content: center; align-items: center; min-height: 44px; margin-top: 4px; }
+.gsi-slot[aria-busy="true"]::before { content: ""; width: min(100%, 340px); height: 40px; border-radius: 999px; background: var(--surface-2); }
+.gate-card:not(.gsi-off) .gbtn { display: none; }
+.gate-card.gsi-off .gsi-slot, .gate-card.gsi-off .gsi-alt { display: none; }
+.gsi-alt { justify-self: center; min-height: 30px; font-size: 13px; font-weight: 500; color: var(--muted); }
+.gate-msg .spin-sm { display: inline-block; vertical-align: -2px; margin-right: 8px; }
 .gate-guest { justify-self: center; min-height: 36px; font-size: 14.5px; color: var(--brand); }
 .gate-guest svg { width: 16px; height: 16px; }
 .gate-guest-note { margin-top: -10px; text-align: center; }
@@ -3630,6 +3636,7 @@ async function logout() {
     if (!go) return;
   }
   sb.logout();
+  try { if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect(); } catch (e) { /* yok say */ }
   sb.admin = false;
   syncMeta = {};
   saveSyncMeta();
@@ -3716,6 +3723,10 @@ const GUEST_KEY = 'dizi-ajanda:guest';
 const AUTH_KEY = 'dizi-ajanda:auth';
 const NEXT_KEY = 'dizi-ajanda:next';
 const G_LOGO = 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg';
+// Google'ın kendi giriş düğmesi (Google Identity Services): giriş penceresinde Supabase'in adresi değil sitenin adresi görünür.
+// İstemci kimliği gizli değildir; Google'ın düğmesi her sayfada bunu kullanır. Testler değiştirebilir.
+const GOOGLE_CLIENT_ID = window.DIZI_GCLIENT !== undefined ? window.DIZI_GCLIENT : '234880870403-rnjfd7omjvech3c361scev0ghq3ag0fj.apps.googleusercontent.com';
+const GSI_SRC = 'https://accounts.google.com/gsi/client';
 Object.assign(ICON, {
   play: svg('<circle cx="12" cy="12" r="9"/><path d="M10.2 8.6v6.8l5.6-3.4z" fill="currentColor" stroke="none"/>'),
   devices: svg('<rect x="2.5" y="5" width="13" height="10" rx="1.6"/><path d="M6 19h6M9 15v4"/><rect x="17.5" y="8" width="4" height="11" rx="1.2"/>'),
@@ -3773,6 +3784,8 @@ function authErrorText(m) {
   if (/provider is not enabled|unsupported provider/i.test(t)) return 'Google ile giriş henüz açılmadı. Kurulum tamamlanınca buradan giriş yapabileceksin.';
   if (/access[_ ]denied|denied|cancel/i.test(t)) return 'Google girişi tamamlanmadı. İstersen yeniden dene.';
   if (/signups? not allowed|signup.*disabled/i.test(t)) return 'Yeni üyelik şu an kapalı.';
+  if (/audience/i.test(t)) return 'Google giriş ayarındaki istemci kimliği eşleşmedi; yönetici kontrol etmeli.';
+  if (/nonce/i.test(t)) return 'Giriş doğrulanamadı. Sayfayı yenileyip yeniden dene.';
   return 'Giriş tamamlanamadı: ' + t;
 }
 function gateMsg(text, err = false) {
@@ -3791,6 +3804,83 @@ function startLogin() {
   patchGate();
   save(true, true);
   sb.login();
+}
+let gsiLoad = null, gsiInit = false, gsiFailed = false, gsiPrompted = false, gsiNonce = null;
+const gsiUsable = () => canLogin() && !!GOOGLE_CLIENT_ID && ui.auth.state !== 'off' && !gsiFailed;
+function loadGsi() {
+  const ok = () => window.google && google.accounts && google.accounts.id;
+  if (ok()) return Promise.resolve(google.accounts.id);
+  if (!gsiLoad) {
+    gsiLoad = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = GSI_SRC;
+      s.async = true;
+      s.onload = () => (ok() ? resolve(google.accounts.id) : reject(new Error('gsi')));
+      s.onerror = () => reject(new Error('gsi'));
+      setTimeout(() => reject(new Error('gsi-timeout')), 8000);
+      document.head.append(s);
+    });
+  }
+  return gsiLoad;
+}
+// Tek kullanımlık sayı: Google'a özeti gider, Supabase'e kendisi; böylece kimlik başka yerde yeniden kullanılamaz
+async function gsiNonceFor() {
+  if (gsiNonce !== null) return gsiNonce;
+  try {
+    const hex = a => Array.from(a, b => b.toString(16).padStart(2, '0')).join('');
+    const raw = hex(crypto.getRandomValues(new Uint8Array(24)));
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+    gsiNonce = { raw, hashed: hex(new Uint8Array(buf)) };
+  } catch (e) { gsiNonce = false; }
+  return gsiNonce;
+}
+async function mountGsiButton() {
+  const card = $('#view .gate-card');
+  if (!card) return;
+  card.classList.toggle('gsi-off', !gsiUsable());
+  const box = $('#gsiBtn', card);
+  if (!box || !gsiUsable()) return;
+  try {
+    const id = await loadGsi();
+    if (!gsiInit) {
+      const n = await gsiNonceFor();
+      id.initialize({
+        client_id: GOOGLE_CLIENT_ID, callback: onGsiCredential, nonce: n ? n.hashed : undefined,
+        ux_mode: 'popup', auto_select: false, cancel_on_tap_outside: true, context: 'signin', itp_support: true, use_fedcm_for_prompt: true,
+      });
+      gsiInit = true;
+    }
+    if (!box.isConnected) return;
+    const root = document.documentElement.dataset.theme;
+    const dark = root === 'dark' || (root !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+    const w = Math.round(box.getBoundingClientRect().width) || 320;
+    id.renderButton(box, { type: 'standard', theme: dark ? 'filled_black' : 'outline', size: 'large', text: 'continue_with', shape: 'pill', logo_alignment: 'center', width: Math.max(220, Math.min(400, w)), locale: 'tr' });
+    box.removeAttribute('aria-busy');
+    if (!gsiPrompted) { gsiPrompted = true; try { id.prompt(); } catch (e) { /* yok say */ } }
+  } catch (e) {
+    gsiFailed = true;
+    card.classList.add('gsi-off');
+  }
+}
+async function onGsiCredential(resp) {
+  if (!resp || !resp.credential) return;
+  ui.gate.exch = true; ui.gate.msg = '';
+  patchGate();
+  try {
+    const n = await gsiNonceFor();
+    const body = { provider: 'google', id_token: resp.credential };
+    if (n) body.nonce = n.raw;
+    const r = await sb.authCall('/auth/v1/token?grant_type=id_token', body);
+    sb.reset();
+    sb.store(r);
+    ui.gate.exch = false;
+    if (route.view === 'gate') { history.replaceState(null, '', '#diziler'); route = parseRoute(); navStack[navStack.length - 1] = '#diziler'; }
+    mount();
+    afterLogin(true);
+  } catch (e) {
+    ui.gate.exch = false;
+    gateMsg(authErrorText(e.message || e.code), true);
+  }
 }
 function sessionLost() {
   if (!SERVER) return;
@@ -3837,11 +3927,13 @@ function onTrendLoaded() {
 function gateCard() {
   const g = ui.gate, off = ui.auth.state === 'off';
   const n = Object.keys(D.shows).length;
+  const gsi = canLogin() && !!GOOGLE_CLIENT_ID && !off;
   const btn = canLogin()
-    ? `<button type="button" class="gbtn${g.busy ? ' busy' : ''}" data-act="login"${g.busy || off ? ' disabled' : ''}>${g.busy ? '<span class="spin-sm" aria-hidden="true"></span>' : `<img src="${G_LOGO}" alt="" onerror="this.remove()">`}<span>${g.busy ? 'Google’a yönlendiriliyorsun…' : 'Google ile devam et'}</span></button>`
+    ? `${gsi ? '<div class="gsi-slot" id="gsiBtn" aria-busy="true"></div>' : ''}<button type="button" class="gbtn${g.busy ? ' busy' : ''}" data-act="login"${g.busy || off ? ' disabled' : ''}>${g.busy ? '<span class="spin-sm" aria-hidden="true"></span>' : `<img src="${G_LOGO}" alt="" onerror="this.remove()">`}<span>${g.busy ? 'Google’a yönlendiriliyorsun…' : 'Google ile devam et'}</span></button>${gsi ? '<button type="button" class="link-btn gsi-alt" data-act="login">Giriş penceresi açılmıyorsa buraya bas</button>' : ''}`
     : `<p class="gate-msg">Giriş yalnızca yayındaki sitede çalışır: <a href="${esc(SITE_URL)}">${esc(SITE_URL.replace(/^https?:\/\//, ''))}</a></p>`;
   const offNote = off && canLogin() && !g.msg ? '<p class="gate-msg" role="status">Google ile giriş henüz açılmadı. Kurulum tamamlanınca buradan giriş yapabileceksin.</p>' : '';
-  const msg = g.msg ? `<p class="gate-msg${g.err ? ' err' : ''}" role="${g.err ? 'alert' : 'status'}">${esc(g.msg)}</p>` : '';
+  const msg = g.exch ? '<p class="gate-msg" role="status"><span class="spin-sm" aria-hidden="true"></span>Giriş yapılıyor…</p>'
+    : g.msg ? `<p class="gate-msg${g.err ? ' err' : ''}" role="${g.err ? 'alert' : 'status'}">${esc(g.msg)}</p>` : '';
   const local = n && !off ? `<p class="gate-note">${ICON.devices}<span>Bu tarayıcıda ${nf.format(n)} dizilik bir listen var. Giriş yaptığında hesabına eklenir.</span></p>` : '';
   const guest = guestAllowed()
     ? `<button type="button" class="link-btn gate-guest" data-act="guest"><span>${guestChosen() ? 'Giriş yapmadan devam et' : 'Şimdilik giriş yapmadan devam et'}</span>${ICON.chev}</button>
@@ -3861,6 +3953,7 @@ function patchGate() {
   const hadFocus = c.contains(document.activeElement) ? document.activeElement.dataset.act : null;
   c.innerHTML = html;
   if (hadFocus) { const el = $(`[data-act="${hadFocus}"]`, c); if (el) el.focus({ preventScroll: true }); }
+  mountGsiButton();
 }
 function viewGate() {
   const trend = (ui.trend.week && ui.trend.week.items) || cacheGet('trend', 'week', 7 * DAY);
@@ -3872,7 +3965,7 @@ function viewGate() {
         <h1>İzlediğin her dizi, kaldığın her bölüm <em>tek yerde</em>.</h1>
         <p class="gate-lead">Yeni bölümler çıkınca ajandana düşer. Nerede kaldığını hatırlar; arkadaşlarınla puanlayıp yorumlarsın.</p>
       </section>
-      <section class="gate-card" aria-labelledby="gateTitle">${gateCard()}</section>
+      <section class="gate-card${gsiUsable() ? '' : ' gsi-off'}" aria-labelledby="gateTitle">${gateCard()}</section>
       <ul class="gate-feats">
         <li><span class="gi">${ICON.cal}</span><b>Bölüm takvimi</b><span>Takip ettiğin dizilerin yeni bölümleri gün gün önünde.</span></li>
         <li><span class="gi">${ICON.play}</span><b>Kaldığın yer</b><span>Bölümü, hatta dakikayı not eder; yetişme planı çıkarır.</span></li>
@@ -4146,6 +4239,7 @@ function setTitle(v = viewName()) {
 function hydrate(v = viewName()) {
   if (v === 'gate' || v === 'privacy') {
     for (const el of $$('[data-need-trend]')) { const w = el.dataset.needTrend; if (!ui.trend[w]) loadTrend(w); }
+    if (v === 'gate') mountGsiButton();
     return;
   }
   for (const el of $$('[data-need-sched]')) { const r = el.dataset.needSched; if (!ui.sched[r]) loadSched(r); }
